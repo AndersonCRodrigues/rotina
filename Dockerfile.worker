@@ -1,0 +1,29 @@
+# syntax=docker/dockerfile:1
+#
+# Dockerfile separado do Dockerfile do Django/web: mesma base e mesmas
+# dependências (o worker usa o ORM do Django para consultar o Postgres),
+# mas sem Gunicorn/WhiteNoise/collectstatic — o worker não serve HTTP.
+FROM python:3.12-slim AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential libpq-dev netcat-traditional \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY . .
+
+RUN chmod +x /app/entrypoint.worker.sh
+
+RUN useradd --create-home appuser && chown -R appuser:appuser /app
+USER appuser
+
+ENTRYPOINT ["/app/entrypoint.worker.sh"]
+CMD ["python", "manage.py", "send_reminders", "--loop", "--interval", "30"]
