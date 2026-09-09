@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Rotina — suas tarefas, sua agenda, no horário certo{% endblock %}
+
+{% block content %}
+<div class="hero mb-5 text-center">
+    <p class="hero-kicker mb-2">Organização do dia a dia</p>
+    <h1 class="display-6 fw-bold mb-3">Suas tarefas, sua agenda, no horário certo</h1>
+    <p class="lead col-lg-7 mx-auto mb-4">
+        Cadastre suas tarefas diárias, acompanhe tudo em um calendário e
+        escolha se — e com quanto tempo de antecedência — quer ser
+        lembrado antes do prazo.
+    </p>
+    {% if user.is_authenticated %}
+        <a href="{% url 'tasks:dashboard' %}" class="btn btn-light btn-lg">Ir para o painel</a>
+    {% else %}
+        <a href="{% url 'accounts:register' %}" class="btn btn-light btn-lg me-2">Criar conta grátis</a>
+        <a href="{% url 'accounts:login' %}" class="btn btn-outline-light btn-lg">Entrar</a>
+    {% endif %}
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-12 col-md-4">
+        <div class="feature-icon mb-3"><i class="bi bi-list-check"></i></div>
+        <h5>Painel do dia a dia</h5>
+        <p class="text-muted">
+            Crie, edite e conclua tarefas. Veja de relance o que está
+            pendente, em andamento, atrasado ou já concluído.
+        </p>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="feature-icon mb-3"><i class="bi bi-calendar3"></i></div>
+        <h5>Agenda em calendário</h5>
+        <p class="text-muted">
+            Visualize suas tarefas agendadas em um calendário mensal, com
+            cor por status.
+        </p>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="feature-icon mb-3"><i class="bi bi-bell"></i></div>
+        <h5>Lembrete configurável</h5>
+        <p class="text-muted">
+            Escolha, tarefa por tarefa, se quer ser avisado e com quanto
+            tempo de antecedência — de 10 minutos a 2 dias antes.
+        </p>
+    </div>
+</div>
+{% endblock %}
