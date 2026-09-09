@@ -1,0 +1,25 @@
+[run]
+source = accounts,core,tasks,rotina
+
+# Omitido deliberadamente, com justificativa:
+# - */migrations/*      : gerado pelo Django, não é lógica de aplicação.
+# - manage.py            : boilerplate padrão do django-admin.
+# - rotina/asgi.py, wsgi.py : boilerplate padrão de deploy, sem lógica própria.
+# - rotina/settings.py   : é configuração declarativa por variável de
+#                          ambiente; "cobrir" de forma significativa exigiria
+#                          rodar a suíte inteira uma vez por combinação de
+#                          env vars (DEBUG=True/False, USE_SQLITE_* etc.),
+#                          o que não agrega confiança real sobre a aplicação.
+# - */tests.py            : os próprios arquivos de teste.
+omit =
+    */migrations/*
+    manage.py
+    rotina/asgi.py
+    rotina/wsgi.py
+    rotina/settings.py
+    */tests.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+show_missing = True
