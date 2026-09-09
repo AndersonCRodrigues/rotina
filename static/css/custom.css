@@ -1,0 +1,232 @@
+/* ==========================================================================
+   Rotina — design tokens
+   Conceito: organização diária clara e calma, sem decoração supérflua.
+   Paleta própria (não o azul padrão do Bootstrap) + uma mono só para dados
+   reais (horários, datas, contadores).
+   ========================================================================== */
+
+:root {
+    --tb-ink: #161a18;
+    --tb-ink-soft: #3d453f;
+    --tb-paper: #f4f5f1;
+    --tb-surface: #ffffff;
+    --tb-border: #dfe2dc;
+
+    --tb-primary: #1f6f5c;
+    --tb-primary-dark: #164f42;
+    --tb-primary-tint: #e4efe9;
+
+    --tb-accent: #c1622e;
+    --tb-accent-dark: #a04f24;
+
+    --tb-success: #2e7d5b;
+    --tb-danger: #b23b2e;
+    --tb-neutral: #6b7280;
+
+    --tb-font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --tb-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --tb-radius: 0.5rem;
+
+    /* Sobrepõe as variáveis do Bootstrap 5 (CSS custom properties) */
+    --bs-primary: var(--tb-primary);
+    --bs-primary-rgb: 31, 111, 92;
+    --bs-body-color: var(--tb-ink);
+    --bs-body-bg: var(--tb-paper);
+    --bs-border-color: var(--tb-border);
+    --bs-link-color: var(--tb-primary);
+    --bs-link-hover-color: var(--tb-primary-dark);
+}
+
+body {
+    font-family: var(--tb-font-ui);
+    background-color: var(--tb-paper);
+    color: var(--tb-ink);
+    padding-bottom: 4.5rem; /* espaço para a barra de navegação fixa no mobile */
+}
+
+@media (min-width: 992px) {
+    body { padding-bottom: 0; }
+}
+
+h1, h2, h3, h4, h5, .navbar-brand {
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+time, .tb-mono, .stat-value, .task-time {
+    font-family: var(--tb-font-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+a { color: var(--tb-primary); }
+a:hover { color: var(--tb-primary-dark); }
+
+/* --------------------------------------------------------------------------
+   Botões — cor de marca própria, sem depender do azul padrão do Bootstrap
+   -------------------------------------------------------------------------- */
+.btn-primary {
+    background-color: var(--tb-primary);
+    border-color: var(--tb-primary);
+}
+.btn-primary:hover, .btn-primary:focus {
+    background-color: var(--tb-primary-dark);
+    border-color: var(--tb-primary-dark);
+}
+.btn-outline-primary {
+    color: var(--tb-primary);
+    border-color: var(--tb-primary);
+}
+.btn-outline-primary:hover {
+    background-color: var(--tb-primary);
+    border-color: var(--tb-primary);
+}
+
+/* --------------------------------------------------------------------------
+   Navegação — barra superior fixa no desktop; vira barra inferior de
+   toque no mobile (mobile-first: regra base é a de telas pequenas).
+   -------------------------------------------------------------------------- */
+.navbar {
+    background-color: var(--tb-ink) !important;
+}
+
+.tb-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1030;
+    background-color: var(--tb-surface);
+    border-top: 1px solid var(--tb-border);
+    display: flex;
+    justify-content: space-around;
+    padding: 0.4rem 0;
+}
+
+.tb-bottom-nav a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    font-size: 0.7rem;
+    color: var(--tb-ink-soft);
+    text-decoration: none;
+    padding: 0.25rem 0.5rem;
+    min-width: 4rem;
+}
+
+.tb-bottom-nav a.active,
+.tb-bottom-nav a:hover {
+    color: var(--tb-primary);
+}
+
+.tb-bottom-nav i {
+    font-size: 1.15rem;
+}
+
+@media (min-width: 992px) {
+    .tb-bottom-nav { display: none; }
+}
+
+/* --------------------------------------------------------------------------
+   Hero da landing — contido, sem gradiente genérico azul→roxo
+   -------------------------------------------------------------------------- */
+.hero {
+    background-color: var(--tb-ink);
+    color: var(--tb-paper);
+    border-radius: 0;
+    padding: 3rem 1.25rem;
+}
+
+@media (min-width: 768px) {
+    .hero { padding: 4.5rem 2rem; border-radius: 0 0 1rem 1rem; }
+}
+
+.hero .btn-light {
+    font-weight: 600;
+    color: var(--tb-ink);
+}
+
+.hero-kicker {
+    color: var(--tb-accent);
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+/* --------------------------------------------------------------------------
+   Cards de conteúdo — borda fina + leve elevação apenas onde diferencia
+   hierarquia (evita o "mesmo card arredondado e sombra igual em tudo").
+   -------------------------------------------------------------------------- */
+.card {
+    border: 1px solid var(--tb-border);
+    border-radius: var(--tb-radius);
+    box-shadow: none;
+}
+
+.feature-icon {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.6rem;
+    background: var(--tb-primary-tint);
+    color: var(--tb-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+}
+
+.stat-card {
+    border-left: 3px solid var(--tb-primary);
+}
+
+/* --------------------------------------------------------------------------
+   Lista de tarefas — hierarquia por borda lateral, não por cor de fundo
+   -------------------------------------------------------------------------- */
+.task-item {
+    background-color: var(--tb-surface);
+    border: 1px solid var(--tb-border);
+    border-left: 3px solid var(--tb-neutral);
+    border-radius: var(--tb-radius);
+}
+
+.task-overdue { border-left-color: var(--tb-danger) !important; }
+.task-done { border-left-color: var(--tb-success) !important; opacity: 0.72; }
+
+.badge.bg-success { background-color: var(--tb-success) !important; }
+.badge.bg-danger { background-color: var(--tb-danger) !important; }
+.badge.bg-secondary { background-color: var(--tb-neutral) !important; }
+
+/* --------------------------------------------------------------------------
+   Calendário
+   -------------------------------------------------------------------------- */
+#calendar {
+    max-width: 100%;
+    background: var(--tb-surface);
+    padding: 0.75rem;
+    border: 1px solid var(--tb-border);
+    border-radius: var(--tb-radius);
+}
+
+@media (min-width: 768px) {
+    #calendar { padding: 1.25rem; }
+}
+
+/* --------------------------------------------------------------------------
+   Formulários
+   -------------------------------------------------------------------------- */
+.form-control:focus, .form-select:focus {
+    border-color: var(--tb-primary);
+    box-shadow: 0 0 0 0.2rem var(--tb-primary-tint);
+}
+
+/* --------------------------------------------------------------------------
+   Acessibilidade: foco visível, respeita "prefers-reduced-motion"
+   -------------------------------------------------------------------------- */
+a:focus-visible, button:focus-visible, .btn:focus-visible {
+    outline: 2px solid var(--tb-accent);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+}
