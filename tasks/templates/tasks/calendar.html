@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Calendário — Rotina{% endblock %}
+
+{% block extra_head %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Calendário de tarefas</h2>
+<div id="calendar"></div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var calendarEl = document.getElementById('calendar');
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'pt-br',
+            height: 'auto',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,dayGridWeek,listMonth'
+            },
+            events: "{% url 'tasks:calendar_events' %}"
+        });
+        calendar.render();
+    });
+</script>
+{% endblock %}

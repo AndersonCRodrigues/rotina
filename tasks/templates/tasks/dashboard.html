@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Painel — Rotina{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Painel de tarefas</h2>
+    <a href="{% url 'tasks:task_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nova tarefa</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card stat-card"><div class="card-body">
+            <div class="text-muted small">Total</div>
+            <div class="fs-3 fw-bold stat-value">{{ stats.total }}</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card"><div class="card-body">
+            <div class="text-muted small">Cumpridas</div>
+            <div class="fs-3 fw-bold stat-value text-success">{{ stats.done }}</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card"><div class="card-body">
+            <div class="text-muted small">Atrasadas</div>
+            <div class="fs-3 fw-bold stat-value text-danger">{{ stats.overdue }}</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card"><div class="card-body">
+            <div class="text-muted small">Próximas</div>
+            <div class="fs-3 fw-bold stat-value text-primary">{{ stats.upcoming }}</div>
+        </div></div>
+    </div>
+</div>
+
+{% if tasks %}
+    <div class="list-group">
+        {% for task in tasks %}
+            <div class="list-group-item {% if task.status == 'done' %}task-done{% elif task.is_overdue %}task-overdue{% endif %} task-item mb-2">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                    <div>
+                        <h5 class="mb-1">
+                            {{ task.title }}
+                            {% if task.status == 'done' %}
+                                <span class="badge bg-success">Concluída</span>
+                            {% elif task.is_overdue %}
+                                <span class="badge bg-danger">Atrasada</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ task.get_status_display }}</span>
+                            {% endif %}
+                        </h5>
+                        <p class="mb-1 text-muted"><i class="bi bi-calendar-event"></i> <time class="task-time">{{ task.scheduled_for }}</time></p>
+                        {% if task.notes %}
+                            <p class="mb-1 small text-muted"><i class="bi bi-journal-text"></i> {{ task.notes|truncatechars:120 }}</p>
+                        {% endif %}
+                        {% if task.remind_at %}
+                            <p class="mb-1 small text-muted"><i class="bi bi-bell"></i> Lembrete: <time class="task-time">{{ task.remind_at }}</time></p>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex gap-2">
+                        {% if task.status != 'done' %}
+                            <form method="post" action="{% url 'tasks:task_complete' task.pk %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-check-lg"></i></button>
+                            </form>
+                        {% endif %}
+                        <a href="{% url 'tasks:task_update' task.pk %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i></a>
+                        <a href="{% url 'tasks:task_delete' task.pk %}" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></a>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    {% if is_paginated %}
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+                {% endif %}
+                <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+                {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Próxima</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+{% else %}
+    <div class="text-center py-5 text-muted">
+        <i class="bi bi-inbox fs-1"></i>
+        <p class="mt-2">Você ainda não tem tarefas. <a href="{% url 'tasks:task_create' %}">Crie a primeira</a>.</p>
+    </div>
+{% endif %}
+{% endblock %}
