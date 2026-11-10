@@ -62,6 +62,10 @@ class TaskUpdateView(OwnedQuerysetMixin, UpdateView):
     success_url = reverse_lazy("tasks:dashboard")
 
     def form_valid(self, form):
+        original = Task.objects.get(pk=form.instance.pk, owner=self.request.user)
+        reminder_fields = ("scheduled_for", "remind_enabled", "remind_minutes_before")
+        if any(getattr(original, field) != form.cleaned_data[field] for field in reminder_fields):
+            form.instance.reminder_sent_at = None
         messages.success(self.request, "Tarefa atualizada.")
         return super().form_valid(form)
 

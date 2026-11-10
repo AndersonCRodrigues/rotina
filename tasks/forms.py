@@ -50,4 +50,6 @@ class TaskForm(BootstrapFormMixin, forms.ModelForm):
                 "remind_minutes_before",
                 "Escolha com quanto tempo de antecedência avisar.",
             )
+        if not cleaned.get("remind_enabled"):
+            cleaned["remind_minutes_before"] = None
         return cleaned
