@@ -135,12 +135,12 @@ python manage.py send_reminders --loop
 ./run_tests.sh --no-cov     # só check + testes, sem medir cobertura (mais rápido)
 ```
 
-A suíte tem **72 testes** (`accounts/tests.py`, `core/tests.py`,
+A suíte original possui **72 testes** (`accounts/tests.py`, `core/tests.py`,
 `tasks/tests.py`) cobrindo models, forms, views, proteção contra IDOR e o
 worker de lembretes (incluindo `--loop`, `--max-iterations` e interrupção
 por `KeyboardInterrupt`).
 
-**Cobertura: 100% das linhas** de todo o código de aplicação
+**Cobertura original: 100% das linhas** de todo o código de aplicação
 (`accounts`, `core`, `tasks`, `rotina/urls.py`), medida com `coverage.py`
 (config em `.coveragerc`). Ficam de fora, com justificativa documentada no
 próprio `.coveragerc`:
@@ -200,7 +200,7 @@ rotina/
 
 ## Notas de segurança
 
-- Senhas: hashing Argon2, com PBKDF2 como fallback de compatibilidade.
+- Senhas: hashing Argon2, com PBKDG2 como fallback de compatibilidade.
 - `Task.notes`: criptografado em repouso via Fernet, transparente na
   camada de model.
 - CSRF, XSS (`SECURE_BROWSER_XSS_FILTER`, `X_FRAME_OPTIONS: DENY`),
@@ -221,10 +221,87 @@ em repouso confirmada via leitura direta da coluna no banco → painel →
 calendário (página e JSON) → conclusão → edição → bloqueio de acesso de
 outro usuário à mesma tarefa (404) → exclusão → `/admin/` → worker de
 lembretes disparando, não duplicando disparo e ignorando tarefas concluídas/
-sem lembrete/no futuro. Suíte automatizada com 72 testes, 100% de cobertura
-de linha no código de aplicação.
+sem lembrete/no futuro. A suíte original possui 72 testes e registrava 100% de cobertura; a integração DRF acrescenta testes e exige nova medição.
 
 Não foi possível executar `docker compose up` dentro deste sandbox (sem
 Docker disponível) — revise o build dos dois Dockerfiles ao subir no seu
 ambiente. O restante (Django/ORM/templates/views/worker) foi exercitado
 diretamente, sem Docker.
+
+## API REST (Django REST Framework)
+
+A API funciona dentro deste projeto Django, com o modelo `Task`, o usuário `accounts.User`, autenticação por sessão e proteção CSRF do Django. Não há JWT, tokens de API nem alteração de modelos ou migrations. O proprietário de cada tarefa é definido no servidor; acessar tarefas de outros usuários retorna 404. O conteúdo `notes` continua criptografado em repouso.
+
+### Rotas da API
+
+| Método | Rota | Uso |
+|---|---|---|
+| GET | `/api/me/` | Perfil do usuário autenticado |
+| GET | `/api/tarefas/` | Listar somente minhas tarefas |
+| POST | `/api/tarefas/` | Criar tarefa |
+| GET | `/api/tarefas/{id}/` | Consultar tarefa |
+| PUT | `/api/tarefas/{id}/` | Substituir campos editáveis |
+| PATCH | `/api/tarefas/{id}/` | Alterar campos específicos |
+| DELETE | `/api/tarefas/{id}/` | Excluir tarefa |
+| POST | `/api/tarefas/{id}/concluir/` | Concluir tarefa |
+| GET/POST | `/api-auth/login/` | Login na interface navegável do DRF |
+| POST | `/api-auth/logout/` | Logout na interface do DRF |
+
+Os métodos GET não alteram dados. POST de criação retorna 201, DELETE retorna 204 e atualização/conclusão retornam 200. Requisições anônimas recebem 403; dados inválidos, 400; registro inexistente ou alheio, 404. As páginas e rotas HTML originais continuam intactas.
+
+### Campos e regras
+
+Na criação, informe `title` (obrigatório) e `scheduled_for` (data/hora ISO 8601). O restante é opcional: `notes`, `status` (`todo`, `in_progress`, `done`), `remind_enabled` e `remind_minutes_before` (`10`, `30`, `60`, `180`, `1440` ou `2880`). Se o lembrete estiver ativado, a antecedência é obrigatória. Ao desativar o lembrete, a antecedência é limpa. Ao alterar a programação do lembrete, o estado de envio anterior é reiniciado, tanto na API quanto na edição por formulário HTML.
+
+Os campos `id`, `completed_at`, `remind_at`, `is_overdue`, `created_at` e `updated_at` são somente leitura; `owner` e `reminder_sent_at` não são expostos. As notas são retornadas em texto legível **somente ao usuário dono**, após a descriptografia normal do model. A ação `/concluir/` usa `Task.mark_complete()`. Atualizar `status` diretamente mantém o comportamento já existente do formulário HTML.
+
+A listagem aceita `?status=todo`, `?search=reunião` e `?ordering=-scheduled_for` (também `created_at`, `status`, com `-` para ordem decrescente). A busca é feita apenas nos títulos; notas estão criptografadas no banco.
+
+### Autenticação e exemplos
+
+Acesse `/contas/login/` e entre com sua conta existente. Depois, no mesmo navegador, abra `/api/tarefas/`. A interface navegável do DRF pode usar `/api-auth/login/`. Operações de escrita com sessão exigem o cookie `sessionid` e o cabeçalho `X-CSRFToken` com token válido. Nunca desabilite a proteção CSRF.
+
+No Linux, um exemplo de login e criação usando cURL:
+
+```bash
+BASE=http://localhost:8000
+curl -s -c cookies.txt "$BASE/contas/login/" > /dev/null
+CSRF=$(awk '$6 == "csrftoken" {print $7}' cookies.txt)
+curl -i -b cookies.txt -c cookies.txt \
+  --data-urlencode 'username=SEU_USUARIO' \
+  --data-urlencode 'password=SUA_SENHA' \
+  --data-urlencode "csrfmiddlewaretoken=$CSRF" \
+  "$BASE/contas/login/"
+CSRF=$(awk '$6 == "csrftoken" {print $7}' cookies.txt)
+curl -b cookies.txt "$BASE/api/me/"
+curl -b cookies.txt "$BASE/api/tarefas/?status=todo&ordering=scheduled_for"
+curl -i -b cookies.txt -H "X-CSRFToken: $CSRF" -H 'Content-Type: application/json' \
+  -d '{"title":"Estudar DRF","notes":"Exemplo","scheduled_for":"2026-12-01T18:00:00-03:00","remind_enabled":true,"remind_minutes_before":30}' \
+  "$BASE/api/tarefas/"
+```
+
+Exemplo de atualização, conclusão e exclusão para uma tarefa sua (`ID` deve ser substituído pelo ID retornado):
+
+```bash
+ID=1
+curl -i -X PATCH -b cookies.txt -H "X-CSRFToken: $CSRF" -H 'Content-Type: application/json' -d '{"title":"Título atualizado"}' "$BASE/api/tarefas/$ID/"
+curl -i -X POST -b cookies.txt -H "X-CSRFToken: $CSRF" "$BASE/api/tarefas/$ID/concluir/"
+curl -i -X DELETE -b cookies.txt -H "X-CSRFToken: $CSRF" "$BASE/api/tarefas/$ID/"
+```
+
+Para validar depois da instalação das dependências (configure `.env`, incluindo `FIELD_ENCRYPTION_KEY` e `USE_SQLITE_FOR_TESTS=True`):
+
+```bash
+pip install -r requirements-dev.txt
+python manage.py check
+python manage.py makemigrations --check --dry-run
+python manage.py test tasks.test_api
+python manage.py test
+./run_tests.sh
+```
+
+Os testes de API estão em `tasks/test_api.py`. A cobertura de 100% registrada anteriormente se refere ao código antes do DRF, não é uma afirmação sobre a versão atual.
+
+### Correções de consistência
+
+Na edição das tarefas, tanto a API quanto o formulário HTML reiniciam `reminder_sent_at` quando os dados de agendamento ou antecedência mudam, permitindo ao worker reconhecer o novo aviso. Desativar lembretes limpa a antecedência guardada. Testes de regressão foram adicionados em `tasks/test_api.py`.
