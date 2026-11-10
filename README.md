@@ -37,6 +37,279 @@ e dispara esses lembretes. Postgres, Docker Compose e Bootstrap 5.
 - Calendário mensal interativo (FullCalendar), alimentado por endpoint JSON
 - Painel administrativo do Django (`/admin/`)
 
+## API REST — Django REST Framework
+
+A API utiliza os mesmos modelos, banco e usuários da aplicação web. A autenticação é
+feita por **sessão do Django**, usando `accounts.User`, sem JWT ou autenticação
+paralela. O acesso exige login; cada usuário só consegue consultar e modificar
+suas próprias tarefas. As notas (`notes`) continuam criptografadas no banco.
+
+**Endereço base:** `http://localhost:8000` (ao executar o servidor local ou o Docker Compose).
+
+### Rotas da API
+
+| Método HTTP | Endpoint | Uso | Resposta de sucesso |
+|---|---|---|---|
+| GET | `/api/me/` | Dados do usuário autenticado | 200 |
+| GET | `/api/tarefas/` | Listar tarefas do usuário | 200 |
+| POST | `/api/tarefas/` | Cadastrar tarefa | 201 |
+| GET | `/api/tarefas/{id}/` | Consultar uma tarefa | 200 |
+| PUT | `/api/tarefas/{id}/` | Substituir os campos editáveis | 200 |
+| PATCH | `/api/tarefas/{id}/` | Atualizar campos específicos | 200 |
+| DELETE | `/api/tarefas/{id}/` | Excluir tarefa | 204 |
+| POST | `/api/tarefas/{id}/concluir/` | Marcar tarefa como concluída | 200 |
+
+`{id}` representa o identificador de uma tarefa pertencente ao usuário autenticado.
+
+Rotas de autenticação existentes: `/contas/cadastro/`, `/contas/login/` e
+`/contas/logout/` (o logout usa POST). A interface navegável do DRF também
+possui `/api-auth/login/` e `/api-auth/logout/`. Os endpoints originais do
+painel, do calendário e do admin continuam funcionando.
+
+### Campos aceitos para criar e atualizar tarefas
+
+| Campo | Tipo | Regra |
+|---|---|---|
+| `title` | texto | Obrigatório na criação; até 200 caracteres |
+| `scheduled_for` | data/hora ISO 8601 | Obrigatório na criação, com fuso horário recomendado |
+| `notes` | texto | Opcional, criptografado em repouso |
+| `status` | texto | `todo`, `in_progress` ou `done`; padrão `todo` |
+| `remind_enabled` | booleano | Habilita/desabilita o lembrete; padrão `false` |
+| `remind_minutes_before` | número inteiro ou `null` | `10`, `30`, `60`, `180`, `1440` ou `2880`; obrigatório se o lembrete estiver ativo |
+
+Campos devolvidos como somente leitura: `id`, `completed_at`, `remind_at`,
+`is_overdue`, `created_at`, `updated_at`. O proprietário (`owner`) é
+atribuído automaticamente a partir da sessão, não podendo ser escolhido na
+requisição. O campo interno `reminder_sent_at` não é exposto.
+
+Ao desativar o lembrete, a antecedência é apagada. Ao reagendar uma tarefa ou
+modificar seu lembrete, o registro de envio anterior é reiniciado para
+permitir o novo disparo. O worker atual registra os lembretes em log; ele não
+envia notificações por e-mail, push ou SMS.
+
+### Testar pelo Insomnia, Thunder Client ou outro cliente REST
+
+As requisições abaixo podem ser montadas diretamente no **Insomnia**, no **Thunder Client (VS Code)** ou em um cliente REST semelhante. Não é necessário utilizar terminal para fazer requisições HTTP.
+
+Crie uma coleção chamada **Rotina API** e configure uma variável de ambiente:
+
+| Variável | Valor para execução local |
+|---|---|
+| `base_url` | `http://localhost:8000` |
+
+Em cada requisição, utilize `{{base_url}}` antes do caminho da rota. Substitua `{id}` pelo ID retornado ao cadastrar uma tarefa. Se o cliente não oferecer variáveis, utilize a URL completa, como `http://localhost:8000/api/tarefas/`.
+
+#### 1. Autenticação por sessão Django
+
+A API **não usa Bearer Token, JWT nem Basic Auth**. Em **Auth**, selecione **No Auth**: o acesso será reconhecido pelos cookies `sessionid` e `csrftoken` gerados pelo Django após o login.
+
+1. Crie uma requisição `GET {{base_url}}/contas/login/` e envie-a. O Django disponibiliza o formulário de login e um cookie `csrftoken`. Copie o token CSRF do cookie ou do campo oculto `csrfmiddlewaretoken` do formulário.
+2. Crie uma requisição `POST {{base_url}}/contas/login/`. Em **Body**, escolha **Form URL Encoded** (`application/x-www-form-urlencoded`) e preencha os campos:
+
+   | Campo | Exemplo |
+   |---|---|
+   | `username` | `usuario_teste` |
+   | `password` | `senha_da_conta` |
+   | `csrfmiddlewaretoken` | token obtido no passo anterior |
+
+3. O cliente deve manter os cookies recebidos pelo mesmo host. Se ele não conservar cookies automaticamente, configure seu gerenciador de cookies para persistir `csrftoken` e `sessionid` entre as requisições. Um login válido normalmente retorna `302 Found` para o painel (ou a página de destino `200` caso o cliente acompanhe o redirecionamento). Um `200` no próprio formulário de login pode indicar credenciais ou dados inválidos.
+4. Após o login, o Django pode renovar o token CSRF. Utilize o valor **atual** do cookie `csrftoken` nas operações de escrita, no header `X-CSRFToken`. Para consultar os dados da sessão, envie `GET {{base_url}}/api/me/`.
+
+Não é necessário colocar usuário e senha nas requisições da API após o login: o `sessionid` identifica a sessão. Para `GET`, basta o cookie da sessão; para `POST`, `PUT`, `PATCH` e `DELETE`, envie também o header `X-CSRFToken`. Preserve o cookie no cliente REST e não desative a verificação CSRF.
+
+**Headers para requisições com JSON:**
+
+| Header | Valor |
+|---|---|
+| `Content-Type` | `application/json` |
+| `Accept` | `application/json` |
+| `X-CSRFToken` | token atual do cookie `csrftoken`, nos métodos que alteram dados |
+
+Os cookies de sessão são administrados no gerenciador de cookies do cliente. O header `X-CSRFToken` não é necessário para `GET`.
+
+#### 2. Consultar o usuário autenticado
+
+| Campo | Valor |
+|---|---|
+| Método | `GET` |
+| URL | `{{base_url}}/api/me/` |
+| Body | Nenhum |
+| Sucesso | `200 OK` |
+
+Resposta ilustrativa:
+
+```json
+{
+  "id": 1,
+  "username": "usuario_teste",
+  "email": "usuario@exemplo.com"
+}
+```
+
+#### 3. Listar, pesquisar e filtrar tarefas
+
+| Campo | Valor |
+|---|---|
+| Método | `GET` |
+| URL | `{{base_url}}/api/tarefas/` |
+| Body | Nenhum |
+| Sucesso | `200 OK` |
+
+Na aba **Query**/**Params** do cliente, adicione os parâmetros opcionais:
+
+| Parâmetro | Exemplo | Função |
+|---|---|---|
+| `status` | `todo` | Filtrar tarefas a fazer (`todo`, `in_progress`, `done`) |
+| `search` | `estudar` | Pesquisar título, sem diferenciar maiúsculas de minúsculas |
+| `ordering` | `scheduled_for` | Ordenar pela data de agendamento crescente |
+| `ordering` | `-scheduled_for` | Ordenar pela data de agendamento decrescente |
+| `ordering` | `-created_at` | Mostrar primeiro as tarefas mais recentes |
+
+Exemplo de URL com filtros combinados: `{{base_url}}/api/tarefas/?status=todo&search=estudar&ordering=scheduled_for`.
+
+A pesquisa não procura no campo `notes`, porque ele é criptografado no banco.
+
+#### 4. Criar uma tarefa
+
+| Campo | Valor |
+|---|---|
+| Método | `POST` |
+| URL | `{{base_url}}/api/tarefas/` |
+| Body | **JSON** |
+| Headers | `Content-Type: application/json` e `X-CSRFToken` |
+| Sucesso | `201 Created` |
+
+Em **Body → JSON**, informe:
+
+```json
+{
+  "title": "Estudar DRF",
+  "notes": "Revisar serializers",
+  "scheduled_for": "2026-12-01T18:00:00-03:00",
+  "status": "todo",
+  "remind_enabled": true,
+  "remind_minutes_before": 30
+}
+```
+
+Exemplo ilustrativo de resposta (os IDs e horários variam conforme o banco e o momento da criação):
+
+```json
+{
+  "id": 1,
+  "title": "Estudar DRF",
+  "notes": "Revisar serializers",
+  "status": "todo",
+  "scheduled_for": "2026-12-01T18:00:00-03:00",
+  "remind_enabled": true,
+  "remind_minutes_before": 30,
+  "completed_at": null,
+  "remind_at": "2026-12-01T17:30:00-03:00",
+  "is_overdue": false,
+  "created_at": "2026-11-09T12:00:00-03:00",
+  "updated_at": "2026-11-09T12:00:00-03:00"
+}
+```
+
+#### 5. Consultar uma tarefa específica
+
+| Campo | Valor |
+|---|---|
+| Método | `GET` |
+| URL | `{{base_url}}/api/tarefas/1/` |
+| Body | Nenhum |
+| Sucesso | `200 OK` |
+
+A resposta contém os campos da tarefa. IDs inexistentes ou pertencentes a outro usuário retornam `404 Not Found`.
+
+#### 6. Atualizar uma tarefa parcialmente
+
+| Campo | Valor |
+|---|---|
+| Método | `PATCH` |
+| URL | `{{base_url}}/api/tarefas/1/` |
+| Body | **JSON** |
+| Headers | `Content-Type: application/json` e `X-CSRFToken` |
+| Sucesso | `200 OK` |
+
+```json
+{
+  "title": "Estudar DRF e autenticação",
+  "status": "in_progress"
+}
+```
+
+O método `PATCH` modifica somente os campos enviados. O método `PUT` utiliza a mesma rota, mas exige os campos obrigatórios para uma atualização completa. Exemplo de **Body → JSON** para `PUT`:
+
+```json
+{
+  "title": "Revisar API REST",
+  "notes": "Conferir todos os endpoints",
+  "scheduled_for": "2026-12-02T15:00:00-03:00",
+  "status": "in_progress",
+  "remind_enabled": false
+}
+```
+
+Quando `remind_enabled` for `false`, `remind_minutes_before` será definido como `null`. Se uma tarefa for reagendada ou suas configurações de lembrete forem alteradas, o registro de envio anterior será reiniciado.
+
+#### 7. Concluir uma tarefa
+
+| Campo | Valor |
+|---|---|
+| Método | `POST` |
+| URL | `{{base_url}}/api/tarefas/1/concluir/` |
+| Body | Nenhum |
+| Header | `X-CSRFToken` |
+| Sucesso | `200 OK` |
+
+A tarefa passa para `status: "done"` e recebe `completed_at`. A resposta contém os dados atualizados.
+
+#### 8. Excluir uma tarefa
+
+| Campo | Valor |
+|---|---|
+| Método | `DELETE` |
+| URL | `{{base_url}}/api/tarefas/1/` |
+| Body | Nenhum |
+| Header | `X-CSRFToken` |
+| Sucesso | `204 No Content` |
+
+A exclusão não devolve JSON. Confirme que o identificador corresponde à tarefa que deseja remover.
+
+### Erros e testes
+
+| HTTP | Significado |
+|---|---|
+| 400 | Dados incorretos, campo obrigatório ausente ou regra de lembrete violada |
+| 403 | Sessão ausente ou token CSRF inválido em operações de escrita |
+| 404 | Tarefa inexistente ou pertencente a outro usuário |
+| 405 | Método HTTP não permitido na rota |
+
+Para testar sem PostgreSQL no Linux:
+
+```bash
+export USE_SQLITE_FOR_TESTS=True
+python manage.py check
+python manage.py makemigrations --check --dry-run
+python manage.py test tasks.test_api
+python manage.py test
+bash run_tests.sh
+```
+
+O host PostgreSQL `db` só é resolvido dentro da rede do Docker Compose. Para
+executar os testes no container, use
+`docker compose exec web python manage.py test tasks.test_api`.
+
+Se a `SECRET_KEY` do arquivo `.env` contiver `$`, coloque o valor entre aspas
+simples para impedir a interpolação pelo Docker Compose. Não divulgue chaves
+reais e não altere `FIELD_ENCRYPTION_KEY` de bancos com notas criptografadas
+sem planejar a migração das informações.
+
+A inclusão do DRF acrescentou testes em `tasks/test_api.py`; o índice de 100%
+de cobertura registrado anteriormente diz respeito à versão sem a API e
+precisa ser medido novamente.
+
 ## O worker de lembretes
 
 O comando `python manage.py send_reminders` (em `tasks/management/commands/`)
@@ -227,81 +500,3 @@ Não foi possível executar `docker compose up` dentro deste sandbox (sem
 Docker disponível) — revise o build dos dois Dockerfiles ao subir no seu
 ambiente. O restante (Django/ORM/templates/views/worker) foi exercitado
 diretamente, sem Docker.
-
-## API REST (Django REST Framework)
-
-A API funciona dentro deste projeto Django, com o modelo `Task`, o usuário `accounts.User`, autenticação por sessão e proteção CSRF do Django. Não há JWT, tokens de API nem alteração de modelos ou migrations. O proprietário de cada tarefa é definido no servidor; acessar tarefas de outros usuários retorna 404. O conteúdo `notes` continua criptografado em repouso.
-
-### Rotas da API
-
-| Método | Rota | Uso |
-|---|---|---|
-| GET | `/api/me/` | Perfil do usuário autenticado |
-| GET | `/api/tarefas/` | Listar somente minhas tarefas |
-| POST | `/api/tarefas/` | Criar tarefa |
-| GET | `/api/tarefas/{id}/` | Consultar tarefa |
-| PUT | `/api/tarefas/{id}/` | Substituir campos editáveis |
-| PATCH | `/api/tarefas/{id}/` | Alterar campos específicos |
-| DELETE | `/api/tarefas/{id}/` | Excluir tarefa |
-| POST | `/api/tarefas/{id}/concluir/` | Concluir tarefa |
-| GET/POST | `/api-auth/login/` | Login na interface navegável do DRF |
-| POST | `/api-auth/logout/` | Logout na interface do DRF |
-
-Os métodos GET não alteram dados. POST de criação retorna 201, DELETE retorna 204 e atualização/conclusão retornam 200. Requisições anônimas recebem 403; dados inválidos, 400; registro inexistente ou alheio, 404. As páginas e rotas HTML originais continuam intactas.
-
-### Campos e regras
-
-Na criação, informe `title` (obrigatório) e `scheduled_for` (data/hora ISO 8601). O restante é opcional: `notes`, `status` (`todo`, `in_progress`, `done`), `remind_enabled` e `remind_minutes_before` (`10`, `30`, `60`, `180`, `1440` ou `2880`). Se o lembrete estiver ativado, a antecedência é obrigatória. Ao desativar o lembrete, a antecedência é limpa. Ao alterar a programação do lembrete, o estado de envio anterior é reiniciado, tanto na API quanto na edição por formulário HTML.
-
-Os campos `id`, `completed_at`, `remind_at`, `is_overdue`, `created_at` e `updated_at` são somente leitura; `owner` e `reminder_sent_at` não são expostos. As notas são retornadas em texto legível **somente ao usuário dono**, após a descriptografia normal do model. A ação `/concluir/` usa `Task.mark_complete()`. Atualizar `status` diretamente mantém o comportamento já existente do formulário HTML.
-
-A listagem aceita `?status=todo`, `?search=reunião` e `?ordering=-scheduled_for` (também `created_at`, `status`, com `-` para ordem decrescente). A busca é feita apenas nos títulos; notas estão criptografadas no banco.
-
-### Autenticação e exemplos
-
-Acesse `/contas/login/` e entre com sua conta existente. Depois, no mesmo navegador, abra `/api/tarefas/`. A interface navegável do DRF pode usar `/api-auth/login/`. Operações de escrita com sessão exigem o cookie `sessionid` e o cabeçalho `X-CSRFToken` com token válido. Nunca desabilite a proteção CSRF.
-
-No Linux, um exemplo de login e criação usando cURL:
-
-```bash
-BASE=http://localhost:8000
-curl -s -c cookies.txt "$BASE/contas/login/" > /dev/null
-CSRF=$(awk '$6 == "csrftoken" {print $7}' cookies.txt)
-curl -i -b cookies.txt -c cookies.txt \
-  --data-urlencode 'username=SEU_USUARIO' \
-  --data-urlencode 'password=SUA_SENHA' \
-  --data-urlencode "csrfmiddlewaretoken=$CSRF" \
-  "$BASE/contas/login/"
-CSRF=$(awk '$6 == "csrftoken" {print $7}' cookies.txt)
-curl -b cookies.txt "$BASE/api/me/"
-curl -b cookies.txt "$BASE/api/tarefas/?status=todo&ordering=scheduled_for"
-curl -i -b cookies.txt -H "X-CSRFToken: $CSRF" -H 'Content-Type: application/json' \
-  -d '{"title":"Estudar DRF","notes":"Exemplo","scheduled_for":"2026-12-01T18:00:00-03:00","remind_enabled":true,"remind_minutes_before":30}' \
-  "$BASE/api/tarefas/"
-```
-
-Exemplo de atualização, conclusão e exclusão para uma tarefa sua (`ID` deve ser substituído pelo ID retornado):
-
-```bash
-ID=1
-curl -i -X PATCH -b cookies.txt -H "X-CSRFToken: $CSRF" -H 'Content-Type: application/json' -d '{"title":"Título atualizado"}' "$BASE/api/tarefas/$ID/"
-curl -i -X POST -b cookies.txt -H "X-CSRFToken: $CSRF" "$BASE/api/tarefas/$ID/concluir/"
-curl -i -X DELETE -b cookies.txt -H "X-CSRFToken: $CSRF" "$BASE/api/tarefas/$ID/"
-```
-
-Para validar depois da instalação das dependências (configure `.env`, incluindo `FIELD_ENCRYPTION_KEY` e `USE_SQLITE_FOR_TESTS=True`):
-
-```bash
-pip install -r requirements-dev.txt
-python manage.py check
-python manage.py makemigrations --check --dry-run
-python manage.py test tasks.test_api
-python manage.py test
-./run_tests.sh
-```
-
-Os testes de API estão em `tasks/test_api.py`. A cobertura de 100% registrada anteriormente se refere ao código antes do DRF, não é uma afirmação sobre a versão atual.
-
-### Correções de consistência
-
-Na edição das tarefas, tanto a API quanto o formulário HTML reiniciam `reminder_sent_at` quando os dados de agendamento ou antecedência mudam, permitindo ao worker reconhecer o novo aviso. Desativar lembretes limpa a antecedência guardada. Testes de regressão foram adicionados em `tasks/test_api.py`.
