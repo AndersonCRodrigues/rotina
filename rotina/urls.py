@@ -9,6 +9,8 @@ urlpatterns = [
     path("", include("core.urls")),
     path("contas/", include("accounts.urls")),
     path("tarefas/", include("tasks.urls")),
+    path("api/", include("tasks.api_urls")),
+    path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
 ]
 
 if settings.DEBUG:  # pragma: no cover — Django força DEBUG=False nos testes;
