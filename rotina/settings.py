@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "django.contrib.humanize",
     # third-party
     "widget_tweaks",
+    "rest_framework",
     # local apps
     "accounts",
     "core",
@@ -157,6 +158,11 @@ STORAGES = {
 }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+}
 
 # ---------------------------------------------------------------------------
 # Segurança de transporte / cookies (parametrizável por ambiente)
