@@ -51,6 +51,8 @@ class TaskCreateView(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.owner = self.request.user
+        if form.cleaned_data["status"] == Task.Status.DONE:
+            form.instance.completed_at = timezone.now()
         messages.success(self.request, "Tarefa criada com sucesso.")
         return super().form_valid(form)
 
@@ -66,6 +68,14 @@ class TaskUpdateView(OwnedQuerysetMixin, UpdateView):
         reminder_fields = ("scheduled_for", "remind_enabled", "remind_minutes_before")
         if any(getattr(original, field) != form.cleaned_data[field] for field in reminder_fields):
             form.instance.reminder_sent_at = None
+        new_status = form.cleaned_data["status"]
+        if original.status == Task.Status.DONE and new_status != original.status:
+            form.instance.reminder_sent_at = None
+        if new_status == Task.Status.DONE:
+            if original.status != Task.Status.DONE or original.completed_at is None:
+                form.instance.completed_at = timezone.now()
+        else:
+            form.instance.completed_at = None
         messages.success(self.request, "Tarefa atualizada.")
         return super().form_valid(form)
 
