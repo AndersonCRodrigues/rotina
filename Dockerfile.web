@@ -20,7 +20,9 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-RUN chmod +x /app/entrypoint.web.sh
+RUN ls -la /app/entrypoint.web.sh \
+    && chmod +x /app/entrypoint.web.sh \
+    && sed -i 's/\r$//' /app/entrypoint.web.sh
 
 # Usuário não-root — evita rodar a aplicação como root dentro do container
 RUN useradd --create-home appuser && chown -R appuser:appuser /app
