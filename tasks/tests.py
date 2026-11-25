@@ -1,9 +1,12 @@
 import io
 import json
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
@@ -187,9 +190,50 @@ class SendRemindersCommandTests(TestCase):
                 remind_enabled=True, remind_minutes_before=10,
             )
         out = io.StringIO()
-        with self.assertNumQueries(4):
+        with CaptureQueriesContext(connection) as queries:
             call_command("send_reminders", stdout=out)
+        self.assertEqual(sum(query["sql"].startswith("SELECT") for query in queries), 1)
         self.assertIn("3 lembrete(s) disparado(s)", out.getvalue())
+
+    def test_two_passes_with_the_same_candidate_log_only_one_reminder(self):
+        task = Task.objects.create(
+            owner=self.user, title="Lembrete concorrente", scheduled_for=self.now,
+            remind_enabled=True, remind_minutes_before=10,
+        )
+        first = io.StringIO()
+        second = io.StringIO()
+        with patch("tasks.models.TaskQuerySet.pending_reminders", return_value=[task]):
+            call_command("send_reminders", stdout=first)
+            call_command("send_reminders", stdout=second)
+        self.assertIn(task.title, first.getvalue())
+        self.assertEqual(second.getvalue().strip(), "Nenhum lembrete pendente.")
+
+    def test_reschedule_after_selection_skips_the_old_reminder(self):
+        task = Task.objects.create(
+            owner=self.user, title="Reagendada", scheduled_for=self.now,
+            remind_enabled=True, remind_minutes_before=10,
+        )
+        Task.objects.filter(pk=task.pk).update(scheduled_for=self.now + timezone.timedelta(days=1))
+        out = io.StringIO()
+        with patch("tasks.models.TaskQuerySet.pending_reminders", return_value=[task]):
+            call_command("send_reminders", stdout=out)
+        self.assertNotIn(task.title, out.getvalue())
+        task.refresh_from_db()
+        self.assertIsNone(task.reminder_sent_at)
+
+    def test_failure_to_log_leaves_reminder_pending_for_retry(self):
+        task = Task.objects.create(
+            owner=self.user, title="Nova tentativa", scheduled_for=self.now,
+            remind_enabled=True, remind_minutes_before=10,
+        )
+        with patch("tasks.management.commands.send_reminders.Command._notify", side_effect=OSError):
+            with self.assertRaises(OSError):
+                call_command("send_reminders", stdout=io.StringIO())
+        task.refresh_from_db()
+        self.assertIsNone(task.reminder_sent_at)
+        retry = io.StringIO()
+        call_command("send_reminders", stdout=retry)
+        self.assertIn(task.title, retry.getvalue())
 
     def test_loop_runs_max_iterations_then_stops(self):
         out = io.StringIO()
@@ -200,8 +244,6 @@ class SendRemindersCommandTests(TestCase):
 
     def test_loop_keyboard_interrupt_is_handled_gracefully(self):
         out = io.StringIO()
-        from unittest.mock import patch
-
         with patch("tasks.management.commands.send_reminders.time.sleep", side_effect=KeyboardInterrupt):
             call_command("send_reminders", "--loop", "--max-iterations", "5", stdout=out)
         self.assertIn("Nenhum lembrete pendente", out.getvalue())

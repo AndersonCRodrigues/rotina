@@ -45,11 +45,15 @@ acesso ao painel de tarefas e ao calendário. A página mostra total de
 tarefas próprias, concluídas, atrasadas e próximas, com base na data
 agendada. O gráfico mostra as tarefas agendadas por dia.
 
+![Dashboard do usuário comum com filtro, quatro indicadores e gráfico de tarefas agendadas](.github/assets/metricas-usuario.png)
+
 O superadmin abre diretamente as métricas do sistema ao entrar. Na
 interface autenticada, o perfil tem acesso ao dashboard, ao CSV e à saída.
 Os indicadores globais são contas cadastradas, contas distintas que
 criaram tarefas, tarefas criadas e tarefas concluídas. Cada indicador usa
 a data do respectivo evento. O gráfico mostra as tarefas criadas por dia.
+
+![Dashboard do superadmin com filtro, quatro indicadores globais e gráfico de tarefas criadas](.github/assets/metricas-superadmin.png)
 
 O filtro usa `inicio` e `fim` no formato `AAAA-MM-DD`. As duas datas são
 inclusivas, no fuso `America/Sao_Paulo`. O período inicial contém os
@@ -299,6 +303,9 @@ Os testes automatizados da API e de autenticação estão em `tasks/test_api.py`
 O comando `python manage.py send_reminders` (em `tasks/management/commands/`)
 consulta as tarefas com lembrete pendente (`Task.objects.pending_reminders()`)
 e as marca como notificadas (`Task.reminder_sent_at`).
+Quando duas execuções encontram a mesma tarefa, apenas uma registra o
+lembrete. Se a tarefa for reagendada antes da reserva, o worker descarta
+o horário anterior e reavalia a nova configuração na próxima verificação.
 
 ```bash
 python manage.py send_reminders
@@ -411,7 +418,7 @@ python manage.py send_reminders --loop
 O primeiro comando executa a verificação do Django e gera os relatórios de
 cobertura. Com `--no-cov`, o script executa a verificação e os testes.
 
-A suíte possui **129 testes**, incluindo autenticação, criação inicial do
+A suíte possui **132 testes**, incluindo autenticação, criação inicial do
 superadmin, API, métricas, isolamento de tarefas por usuário e worker de lembretes.
 
 **Cobertura verificada: 100% das linhas** de todo o código de aplicação

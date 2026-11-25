@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import QuerySet
 from django.utils import timezone
 from rest_framework import filters, permissions, serializers, status, viewsets
@@ -33,13 +34,21 @@ class TaskViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["title"]
     ordering_fields = ["scheduled_for", "created_at", "status"]
+    lock_task_for_update = False
 
     def get_queryset(self) -> QuerySet:
         queryset = Task.objects.filter(owner=self.request.user)
         status_filter = self.request.query_params.get("status")
         if status_filter:
             queryset = queryset.filter(status=status_filter)
+        if self.lock_task_for_update:
+            queryset = queryset.select_for_update()
         return queryset
+
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        self.lock_task_for_update = True
+        return super().update(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         values = {"owner": self.request.user}

@@ -1,6 +1,7 @@
 import time
 
 from django.core.management.base import BaseCommand
+from django.db import transaction
 from django.utils import timezone
 
 from tasks.models import Task
@@ -45,18 +46,19 @@ class Command(BaseCommand):
         now = timezone.now()
         due_tasks = Task.objects.select_related("owner").defer("notes").pending_reminders(as_of=now)
 
+        sent = 0
         for task in due_tasks:
-            self._notify(task, now)
-            task.mark_reminder_sent()
+            with transaction.atomic():
+                if task.claim_reminder():
+                    self._notify(task, now)
+                    sent += 1
 
-        if due_tasks:
-            self.stdout.write(
-                self.style.SUCCESS(f"{len(due_tasks)} lembrete(s) disparado(s).")
-            )
+        if sent:
+            self.stdout.write(self.style.SUCCESS(f"{sent} lembrete(s) disparado(s)."))
         else:
             self.stdout.write("Nenhum lembrete pendente.")
 
-        return len(due_tasks)
+        return sent
 
     def _notify(self, task: Task, now) -> None:
         self.stdout.write(

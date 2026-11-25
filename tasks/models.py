@@ -94,3 +94,16 @@ class Task(models.Model):
     def mark_reminder_sent(self) -> None:
         self.reminder_sent_at = timezone.now()
         self.save(update_fields=["reminder_sent_at", "updated_at"])
+
+    def claim_reminder(self) -> bool:
+        now = timezone.now()
+        return bool(Task.objects.filter(
+            pk=self.pk,
+            scheduled_for=self.scheduled_for,
+            remind_enabled=True,
+            remind_minutes_before=self.remind_minutes_before,
+            reminder_sent_at__isnull=True,
+        ).exclude(status=self.Status.DONE).update(
+            reminder_sent_at=now,
+            updated_at=now,
+        ))

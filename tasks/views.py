@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
@@ -52,6 +53,16 @@ class TaskUpdateView(OwnedQuerysetMixin, UpdateView):
     form_class = TaskForm
     template_name = "tasks/task_form.html"
     success_url = reverse_lazy("tasks:dashboard")
+
+    @transaction.atomic
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.request.method in {"POST", "PUT"}:
+            queryset = queryset.select_for_update()
+        return queryset
 
     def form_valid(self, form):
         original = Task.objects.get(pk=form.instance.pk, owner=self.request.user)
