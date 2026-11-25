@@ -6,7 +6,7 @@
         <div class="card shadow-sm">
             <div class="card-body p-4">
                 <h3 class="mb-4">{% if object %}Editar tarefa{% else %}Nova tarefa{% endif %}</h3>
-                <form method="post" novalidate>
+                <form id="task-form" method="post" novalidate>
                     {% csrf_token %}
                     {% for field in form %}
                         {% if field.name == 'remind_enabled' %}
@@ -39,4 +39,22 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const taskForm = document.getElementById('task-form');
+    const reminderToggle = taskForm.elements.namedItem('remind_enabled');
+    const reminderOffset = taskForm.elements.namedItem('remind_minutes_before');
+
+    function syncReminderOffset() {
+        reminderOffset.disabled = !reminderToggle.checked;
+        reminderOffset.required = reminderToggle.checked;
+    }
+
+    reminderToggle.setAttribute('aria-controls', reminderOffset.id);
+    reminderToggle.addEventListener('change', syncReminderOffset);
+    window.addEventListener('pageshow', syncReminderOffset);
+    syncReminderOffset();
+</script>
 {% endblock %}

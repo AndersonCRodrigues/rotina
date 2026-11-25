@@ -42,6 +42,9 @@ O calendário, o painel e os formulários web exibem os horários de
 `America/Sao_Paulo` mesmo em navegadores configurados para outro fuso.
 Ao editar outros campos de uma tarefa, o formulário preserva os segundos
 e microssegundos já gravados se o horário exibido continuar igual.
+Se os eventos falharem ao carregar, é possível tentar novamente no
+calendário sem perder o período selecionado. No formulário, o campo de
+antecedência fica disponível ao ativar o lembrete.
 
 ## Dashboards de métricas
 

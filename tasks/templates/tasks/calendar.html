@@ -8,6 +8,13 @@
     <h2 class="mb-1">Calendário de tarefas</h2>
     <p class="small text-muted mb-0">Horários em {{ calendar_timezone }}</p>
 </div>
+<p id="calendar-loading" class="small text-muted mb-3" role="status" hidden>Carregando eventos…</p>
+<div id="calendar-error" class="alert alert-warning" hidden>
+    <p id="calendar-error-message" class="mb-2" role="alert"></p>
+    <button id="calendar-retry" type="button" class="btn btn-outline-secondary btn-sm">Tentar novamente</button>
+    <a href="{% url 'tasks:calendar' %}" class="btn btn-link btn-sm">Recarregar página</a>
+</div>
+<noscript><p class="alert alert-warning">Ative o JavaScript para usar o calendário.</p></noscript>
 <div id="calendar"></div>
 {% endblock %}
 
@@ -19,8 +26,20 @@
 <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/luxon3@6.1.15/index.global.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        var calendarEl = document.getElementById('calendar');
-        var calendar = new FullCalendar.Calendar(calendarEl, {
+        const calendarEl = document.getElementById('calendar');
+        const loading = document.getElementById('calendar-loading');
+        const error = document.getElementById('calendar-error');
+        const message = document.getElementById('calendar-error-message');
+        const retry = document.getElementById('calendar-retry');
+
+        if (!window.FullCalendar?.Luxon3) {
+            message.textContent = 'Não foi possível iniciar o calendário.';
+            retry.hidden = true;
+            error.hidden = false;
+            return;
+        }
+
+        const calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth',
             locale: 'pt-br',
             timeZone: '{{ calendar_timezone|escapejs }}',
@@ -30,8 +49,22 @@
                 center: 'title',
                 right: 'dayGridMonth,dayGridWeek,listMonth'
             },
-            events: "{% url 'tasks:calendar_events' %}"
+            events: "{% url 'tasks:calendar_events' %}",
+            loading(isLoading) {
+                loading.hidden = !isLoading;
+                if (isLoading) {
+                    error.hidden = true;
+                }
+            },
+            eventSourceSuccess() {
+                error.hidden = true;
+            },
+            eventSourceFailure() {
+                message.textContent = 'Não foi possível carregar os eventos deste período.';
+                error.hidden = false;
+            }
         });
+        retry.addEventListener('click', () => calendar.refetchEvents());
         calendar.render();
     });
 </script>
