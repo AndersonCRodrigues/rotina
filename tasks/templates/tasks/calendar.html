@@ -40,7 +40,7 @@
         }
 
         const calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
+            initialView: window.matchMedia('(max-width: 575.98px)').matches ? 'listMonth' : 'dayGridMonth',
             locale: 'pt-br',
             timeZone: '{{ calendar_timezone|escapejs }}',
             height: 'auto',

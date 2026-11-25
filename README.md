@@ -45,6 +45,9 @@ e microssegundos já gravados se o horário exibido continuar igual.
 Se os eventos falharem ao carregar, é possível tentar novamente no
 calendário sem perder o período selecionado. No formulário, o campo de
 antecedência fica disponível ao ativar o lembrete.
+Em telas estreitas, os controles do calendário se reorganizam em linhas,
+e a visualização inicial é a lista do mês para mostrar os títulos.
+Os botões de tarefa têm alvos de toque maiores e títulos longos se ajustam à largura.
 
 ## Dashboards de métricas
 

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Painel — Rotina{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
     <h2 class="mb-0">Painel de tarefas</h2>
     <a href="{% url 'tasks:task_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nova tarefa</a>
 </div>
@@ -38,7 +38,7 @@
         {% for task in tasks %}
             <div class="list-group-item {% if task.status == 'done' %}task-done{% elif task.is_overdue %}task-overdue{% endif %} task-item mb-2">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-                    <div>
+                    <div class="task-description">
                         <h5 class="mb-1">
                             {{ task.title }}
                             {% if task.status == 'done' %}
@@ -57,15 +57,15 @@
                             <p class="mb-1 small text-muted"><i class="bi bi-bell"></i> Lembrete: <time class="task-time">{{ task.remind_at }}</time></p>
                         {% endif %}
                     </div>
-                    <div class="d-flex gap-2">
+                    <div class="task-actions d-flex flex-wrap gap-2">
                         {% if task.status != 'done' %}
                             <form method="post" action="{% url 'tasks:task_complete' task.pk %}">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-check-lg"></i></button>
+                                <button type="submit" class="btn btn-success btn-sm" aria-label="Concluir tarefa"><i class="bi bi-check-lg" aria-hidden="true"></i></button>
                             </form>
                         {% endif %}
-                        <a href="{% url 'tasks:task_update' task.pk %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i></a>
-                        <a href="{% url 'tasks:task_delete' task.pk %}" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></a>
+                        <a href="{% url 'tasks:task_update' task.pk %}" class="btn btn-outline-secondary btn-sm" aria-label="Editar tarefa"><i class="bi bi-pencil" aria-hidden="true"></i></a>
+                        <a href="{% url 'tasks:task_delete' task.pk %}" class="btn btn-outline-danger btn-sm" aria-label="Excluir tarefa"><i class="bi bi-trash" aria-hidden="true"></i></a>
                     </div>
                 </div>
             </div>

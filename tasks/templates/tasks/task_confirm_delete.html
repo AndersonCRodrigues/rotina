@@ -5,9 +5,9 @@
     <div class="col-md-6">
         <div class="card shadow-sm border-danger">
             <div class="card-body p-4">
-                <h4>Excluir "{{ object.title }}"?</h4>
+                <h4 class="text-break">Excluir "{{ object.title }}"?</h4>
                 <p class="text-muted">Esta ação não pode ser desfeita.</p>
-                <form method="post">
+                <form method="post" class="d-flex flex-wrap gap-2">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-danger">Sim, excluir</button>
                     <a href="{% url 'tasks:dashboard' %}" class="btn btn-outline-secondary">Cancelar</a>

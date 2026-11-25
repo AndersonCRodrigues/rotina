@@ -34,11 +34,10 @@ body {
     font-family: var(--tb-font-ui);
     background-color: var(--tb-paper);
     color: var(--tb-ink);
-    padding-bottom: 4.5rem;
 }
 
-@media (min-width: 992px) {
-    body { padding-bottom: 0; }
+@media (max-width: 991.98px) {
+    .has-bottom-nav { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px)); }
 }
 
 h1, h2, h3, h4, h5, .navbar-brand {
@@ -75,6 +74,28 @@ a:hover { color: var(--tb-primary-dark); }
     background-color: var(--tb-ink) !important;
 }
 
+.navbar-collapse {
+    min-width: 0;
+}
+
+.tb-logout {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    max-width: 22rem;
+}
+
+.tb-logout-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+main > .alert {
+    overflow-wrap: anywhere;
+}
+
 .tb-bottom-nav {
     position: fixed;
     bottom: 0;
@@ -85,7 +106,7 @@ a:hover { color: var(--tb-primary-dark); }
     border-top: 1px solid var(--tb-border);
     display: flex;
     justify-content: space-around;
-    padding: 0.4rem 0;
+    padding: 0.4rem 0 calc(0.4rem + env(safe-area-inset-bottom, 0px));
 }
 
 .tb-bottom-nav a {
@@ -98,6 +119,7 @@ a:hover { color: var(--tb-primary-dark); }
     text-decoration: none;
     padding: 0.25rem 0.5rem;
     min-width: 4rem;
+    min-height: 44px;
 }
 
 .tb-bottom-nav a.active,
@@ -164,6 +186,31 @@ a:hover { color: var(--tb-primary-dark); }
     border-radius: var(--tb-radius);
 }
 
+.task-description {
+    flex: 1 1 16rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 991.98px) {
+    .navbar-toggler,
+    .tb-logout,
+    .task-actions .btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .tb-logout {
+        max-width: 100%;
+    }
+
+    .task-actions .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
 .task-overdue { border-left-color: var(--tb-danger) !important; }
 .task-done { border-left-color: var(--tb-success) !important; opacity: 0.72; }
 
@@ -181,6 +228,34 @@ a:hover { color: var(--tb-primary-dark); }
 
 @media (min-width: 768px) {
     #calendar { padding: 1.25rem; }
+}
+
+@media (max-width: 575.98px) {
+    #calendar .fc-header-toolbar {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.75rem;
+    }
+
+    #calendar .fc-toolbar-chunk:nth-child(2) {
+        flex-basis: 100%;
+        order: -1;
+        text-align: center;
+    }
+
+    #calendar .fc-button {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    #calendar .fc-col-header-cell-cushion {
+        padding-inline: 0.125rem;
+        font-size: 0.75rem;
+    }
+
+    #calendar .fc-list-event-title {
+        overflow-wrap: anywhere;
+    }
 }
 
 .form-control:focus, .form-select:focus {
