@@ -49,18 +49,29 @@ Cada token identifica um `accounts.User`. Em todas as rotas de tarefas, o servid
 
 | Método | Rota | Operação | Sucesso |
 |---|---|---|---|
+| POST | `/api/cadastro/` | Criar conta comum com `username`, `email`, `password1` e `password2` | 201 |
 | POST | `/api/login/` | Validar `username` e `password` e obter token DRF | 200 |
 | POST | `/api/logout/` | Revogar o token enviado no header | 204 |
 | GET | `/api/me/` | Dados da conta autenticada | 200 |
 | GET | `/api/tarefas/` | Listar apenas as próprias tarefas | 200 |
 | POST | `/api/tarefas/` | Criar tarefa para a conta autenticada | 201 |
+| GET | `/api/tarefas/resumo/` | Contar tarefas próprias por situação | 200 |
+| GET | `/api/tarefas/calendario/eventos.json` | Listar eventos do calendário próprio | 200 |
 | GET | `/api/tarefas/{id}/` | Detalhar tarefa própria | 200 |
 | PUT | `/api/tarefas/{id}/` | Atualizar campos editáveis integralmente | 200 |
 | PATCH | `/api/tarefas/{id}/` | Atualizar apenas os campos enviados | 200 |
 | DELETE | `/api/tarefas/{id}/` | Excluir tarefa própria | 204 |
 | POST | `/api/tarefas/{id}/concluir/` | Concluir tarefa própria | 200 |
 
-Os endpoints protegidos exigem `Authorization: Token <token>`. A rota de login não exige token. O logout revoga o token atual; após ele, é necessário realizar o login novamente. O token simples do DRF é persistido no banco e, por padrão, não expira automaticamente: proteja-o e use **HTTPS em produção**.
+Os endpoints protegidos exigem `Authorization: Token <token>`. Cadastro e
+login são públicos. O cadastro aplica as mesmas validações da interface web
+e retorna `id`, `username` e `email`. Faça login para obter o token. O logout
+revoga o token atual, que é armazenado no banco e permanece válido até ser
+revogado. Use **HTTPS em produção**.
+
+O resumo retorna `total`, `done`, `overdue` e `upcoming`. O calendário
+retorna uma lista de eventos com `id`, `title`, `start`, `color` e `url`.
+O campo `start` segue ISO 8601, e `url` aponta para o detalhe da tarefa na API.
 
 ### Testar com Insomnia, Thunder Client ou cliente REST
 
@@ -349,7 +360,7 @@ python manage.py send_reminders --loop
 ./run_tests.sh --no-cov     # só check + testes, sem medir cobertura (mais rápido)
 ```
 
-A suíte possui **112 testes**, incluindo autenticação, criação inicial do
+A suíte possui **118 testes**, incluindo autenticação, criação inicial do
 superadmin, API, isolamento de tarefas por usuário e worker de lembretes.
 
 **Cobertura verificada: 100% das linhas** de todo o código de aplicação

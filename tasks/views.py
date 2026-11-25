@@ -2,21 +2,17 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
-from django.urls import reverse, reverse_lazy
+from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DeleteView, ListView, TemplateView, UpdateView
 
 from tasks.forms import TaskForm
 from tasks.models import Task
+from tasks.queries import calendar_events, task_summary
 
 
 class OwnedQuerysetMixin(LoginRequiredMixin):
-    """Garante que toda query/gravação fica restrita ao usuário logado —
-    evita que um usuário acesse/edite tarefas de outro só trocando o ID
-    na URL (IDOR).
-    """
-
     def get_queryset(self):
         return super().get_queryset().filter(owner=self.request.user)
 
@@ -32,14 +28,7 @@ class DashboardView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        qs = self.get_queryset()
-        now = timezone.now()
-        ctx["stats"] = {
-            "total": qs.count(),
-            "done": qs.filter(status=Task.Status.DONE).count(),
-            "overdue": qs.exclude(status=Task.Status.DONE).filter(scheduled_for__lt=now).count(),
-            "upcoming": qs.exclude(status=Task.Status.DONE).filter(scheduled_for__gte=now).count(),
-        }
+        ctx["stats"] = task_summary(self.object_list)
         return ctx
 
 
@@ -103,25 +92,5 @@ class CalendarView(LoginRequiredMixin, TemplateView):
 
 
 class CalendarEventsJsonView(LoginRequiredMixin, View):
-    """Alimenta o FullCalendar (front-end) com as tarefas do usuário logado
-    no formato de evento esperado pela biblioteca.
-    """
-
     def get(self, request):
-        tasks = Task.objects.filter(owner=request.user)
-        colors = {
-            Task.Status.TODO: "#6c757d",
-            Task.Status.IN_PROGRESS: "#0d6efd",
-            Task.Status.DONE: "#198754",
-        }
-        events = [
-            {
-                "id": task.pk,
-                "title": task.title,
-                "start": task.scheduled_for.isoformat(),
-                "color": colors.get(task.status, "#6c757d"),
-                "url": reverse("tasks:task_update", args=[task.pk]),
-            }
-            for task in tasks
-        ]
-        return JsonResponse(events, safe=False)
+        return JsonResponse(calendar_events(request.user, "tasks:task_update"), safe=False)

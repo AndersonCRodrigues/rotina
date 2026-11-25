@@ -3,9 +3,21 @@ from django.utils import timezone
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from tasks.api_serializers import TaskSerializer
 from tasks.models import Task
+from tasks.queries import calendar_events, task_summary
+
+
+class CalendarEventsView(APIView):
+    def get(self, request):
+        return Response(calendar_events(request.user, "api:task-detail"))
+
+
+class TaskSummaryView(APIView):
+    def get(self, request):
+        return Response(task_summary(Task.objects.filter(owner=request.user)))
 
 
 class TaskViewSet(viewsets.ModelViewSet):
