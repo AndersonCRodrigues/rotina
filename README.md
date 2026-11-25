@@ -244,7 +244,7 @@ Para testar localmente sem o PostgreSQL, defina `USE_SQLITE_FOR_TESTS=True` no a
 
 Se a `SECRET_KEY` incluir `$` no `.env`, coloque o valor entre aspas simples para não ser interpretado pelo Docker Compose. Nunca publique chaves e senhas reais. Não altere `FIELD_ENCRYPTION_KEY` em bancos com notas criptografadas sem planejar a migração.
 
-Os testes automatizados da API e de autenticação foram adicionados a `tasks/test_api.py`. A cobertura de 100% citada na versão antiga do projeto deverá ser revalidada após essas mudanças.
+Os testes automatizados da API e de autenticação estão em `tasks/test_api.py`.
 
 ## O worker de lembretes
 
@@ -284,6 +284,13 @@ python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().
 docker compose up --build
 ```
 
+Para criar o superadmin automaticamente, preencha `SUPERADMIN_EMAIL` e
+`SUPERADMIN_PASSWORD` no `.env` antes de iniciar o serviço `web`. O serviço
+executa `python manage.py bootstrap_superadmin` após as migrações. O e-mail
+em minúsculas também é o nome de usuário da conta criada. A senha segue os
+validadores do Django. Reiniciar o serviço preserva a conta e sua senha.
+Com ambas as variáveis vazias, a criação automática é desativada.
+
 Isso sobe três serviços:
 
 | Serviço | Dockerfile | O que faz |
@@ -295,12 +302,6 @@ Isso sobe três serviços:
 `web` e `worker` são **imagens separadas** (Dockerfiles distintos), mesmo
 compartilhando o código e as dependências — `worker` não carrega
 Gunicorn/WhiteNoise nem roda `collectstatic`, já que não serve HTTP.
-
-Para criar um superusuário para o `/admin/`:
-
-```bash
-docker compose exec web python manage.py createsuperuser
-```
 
 Para acompanhar os lembretes disparados pelo worker:
 
@@ -323,11 +324,15 @@ source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements-dev.txt   # inclui requirements.txt + coverage
 
 cp .env.example .env
-# no .env, defina USE_SQLITE_FOR_TESTS=True para não precisar de Postgres local
-# gere SECRET_KEY e FIELD_ENCRYPTION_KEY como mostrado acima
+```
 
+Configure um PostgreSQL acessível no `.env` e preencha as chaves e credenciais
+descritas acima. Reserve `USE_SQLITE_FOR_TESTS=True` para testes, pois cada
+processo abre um banco SQLite em memória. Em seguida, execute:
+
+```bash
 python manage.py migrate
-python manage.py createsuperuser
+python manage.py bootstrap_superadmin
 python manage.py runserver
 ```
 
@@ -344,12 +349,10 @@ python manage.py send_reminders --loop
 ./run_tests.sh --no-cov     # só check + testes, sem medir cobertura (mais rápido)
 ```
 
-A suíte original possui **72 testes** (`accounts/tests.py`, `core/tests.py`,
-`tasks/tests.py`) cobrindo models, forms, views, proteção contra IDOR e o
-worker de lembretes (incluindo `--loop`, `--max-iterations` e interrupção
-por `KeyboardInterrupt`).
+A suíte possui **112 testes**, incluindo autenticação, criação inicial do
+superadmin, API, isolamento de tarefas por usuário e worker de lembretes.
 
-**Cobertura original: 100% das linhas** de todo o código de aplicação
+**Cobertura verificada: 100% das linhas** de todo o código de aplicação
 (`accounts`, `core`, `tasks`, `rotina/urls.py`), medida com `coverage.py`
 (config em `.coveragerc`). Ficam de fora, com justificativa documentada no
 próprio `.coveragerc`:
@@ -381,6 +384,7 @@ mesma rotina a cada push/PR e falha se a cobertura cair de 100%.
 | `DEBUG` | `True` em desenvolvimento, `False` em produção |
 | `SECRET_KEY` | chave secreta do Django — gere uma nova, nunca reutilize a de exemplo |
 | `ALLOWED_HOSTS` | hosts/domínios permitidos, separados por vírgula |
+| `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` | credenciais para a criação inicial do superadmin |
 | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | credenciais do Postgres, usadas pelo container `db` e pelo Django |
 | `POSTGRES_HOST` / `POSTGRES_PORT` | endereço do banco (`db`/`5432` dentro do Compose) |
 | `FIELD_ENCRYPTION_KEY` | chave Fernet para criptografia de campos sensíveis — gere com o comando acima e **nunca a rotacione sem antes descriptografar os dados existentes com a chave antiga** |
@@ -430,7 +434,7 @@ em repouso confirmada via leitura direta da coluna no banco → painel →
 calendário (página e JSON) → conclusão → edição → bloqueio de acesso de
 outro usuário à mesma tarefa (404) → exclusão → `/admin/` → worker de
 lembretes disparando, não duplicando disparo e ignorando tarefas concluídas/
-sem lembrete/no futuro. A suíte original possui 72 testes e registrava 100% de cobertura; a integração DRF acrescenta testes e exige nova medição.
+sem lembrete/no futuro.
 
 Não foi possível executar `docker compose up` dentro deste sandbox (sem
 Docker disponível) — revise o build dos dois Dockerfiles ao subir no seu

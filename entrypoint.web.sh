@@ -11,6 +11,7 @@ fi
 
 echo "Aplicando migrações..."
 python manage.py migrate --noinput
+python manage.py bootstrap_superadmin
 
 echo "Coletando arquivos estáticos..."
 python manage.py collectstatic --noinput
