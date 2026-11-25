@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 from django.db import IntegrityError
@@ -80,6 +80,41 @@ class TaskReadAPITests(TestCase):
     def test_requires_token(self):
         for url in (self.summary_url, self.calendar_url):
             self.assertEqual(self.client.get(url).status_code, 401)
+
+    def test_calendar_filters_own_tasks_by_inclusive_start_and_exclusive_end(self):
+        start = datetime.fromisoformat("2026-11-01T00:00:00-03:00")
+        end = start + timedelta(days=7)
+        Task.objects.create(owner=self.user, title="Antes", scheduled_for=start - timedelta(seconds=1))
+        included = Task.objects.create(owner=self.user, title="Primeira", scheduled_for=start)
+        Task.objects.create(owner=self.user, title="Depois", scheduled_for=end)
+        Task.objects.create(owner=self.other, title="Alheia", scheduled_for=start)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
+        params = {"start": start.isoformat(), "end": end.isoformat()}
+
+        with self.assertNumQueries(2):
+            api = self.client.get(self.calendar_url, params)
+        self.assertEqual(api.status_code, 200)
+        self.assertEqual([event["id"] for event in api.json()], [included.pk])
+
+        self.client.force_login(self.user)
+        web = self.client.get(reverse("tasks:calendar_events"), params)
+        self.assertEqual(web.status_code, 200)
+        self.assertEqual([event["id"] for event in web.json()], [included.pk])
+
+    def test_calendar_validates_incomplete_malformed_and_reversed_intervals(self):
+        self.client.force_login(self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
+        for params, error_field in (
+            ({"start": "2026-11-01"}, "end"),
+            ({"start": "invalid", "end": "2026-11-08"}, "start"),
+            ({"start": "2026-11-08", "end": "2026-11-01"}, "end"),
+            ({"start": "2026-11-01", "end": "2026-11-01"}, "end"),
+        ):
+            for url in (self.calendar_url, reverse("tasks:calendar_events")):
+                with self.subTest(params=params, url=url):
+                    response = self.client.get(url, params)
+                    self.assertEqual(response.status_code, 400)
+                    self.assertIn(error_field, response.json())
 
     def test_returns_only_own_data_in_one_task_query_per_endpoint(self):
         now = timezone.now()

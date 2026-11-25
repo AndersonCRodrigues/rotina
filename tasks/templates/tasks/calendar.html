@@ -1,10 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Calendário — Rotina{% endblock %}
 
-{% block extra_head %}
-<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
-{% endblock %}
-
 {% block content %}
 <h2 class="mb-4">Calendário de tarefas</h2>
 <div id="calendar"></div>
@@ -12,6 +8,7 @@
 
 {% block extra_scripts %}
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/locales/pt-br.global.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         var calendarEl = document.getElementById('calendar');

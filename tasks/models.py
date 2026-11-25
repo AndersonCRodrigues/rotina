@@ -80,9 +80,16 @@ class Task(models.Model):
         return self.scheduled_for - timezone.timedelta(minutes=self.remind_minutes_before)
 
     def mark_complete(self) -> None:
-        self.status = self.Status.DONE
-        self.completed_at = timezone.now()
-        self.save(update_fields=["status", "completed_at", "updated_at"])
+        now = timezone.now()
+        updated = Task.objects.filter(pk=self.pk).exclude(
+            status=self.Status.DONE, completed_at__isnull=False,
+        ).update(status=self.Status.DONE, completed_at=now, updated_at=now)
+        if updated:
+            self.status = self.Status.DONE
+            self.completed_at = now
+            self.updated_at = now
+        else:
+            self.refresh_from_db(fields=["status", "completed_at", "updated_at"])
 
     def mark_reminder_sent(self) -> None:
         self.reminder_sent_at = timezone.now()

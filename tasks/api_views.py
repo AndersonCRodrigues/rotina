@@ -1,18 +1,24 @@
+from django.core.exceptions import ValidationError
 from django.db.models import QuerySet
 from django.utils import timezone
-from rest_framework import filters, permissions, status, viewsets
+from rest_framework import filters, permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from tasks.api_serializers import TaskSerializer
+from tasks.forms import calendar_range
 from tasks.models import Task
 from tasks.queries import calendar_events, task_summary
 
 
 class CalendarEventsView(APIView):
     def get(self, request):
-        return Response(calendar_events(request.user, "api:task-detail"))
+        try:
+            period = calendar_range(request.query_params)
+        except ValidationError as error:
+            raise serializers.ValidationError(error.message_dict) from error
+        return Response(calendar_events(request.user, "api:task-detail", **period))
 
 
 class TaskSummaryView(APIView):

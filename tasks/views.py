@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
@@ -7,7 +8,7 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DeleteView, ListView, TemplateView, UpdateView
 
-from tasks.forms import TaskForm
+from tasks.forms import TaskForm, calendar_range
 from tasks.models import Task
 from tasks.queries import calendar_events, task_summary
 
@@ -93,4 +94,8 @@ class CalendarView(LoginRequiredMixin, TemplateView):
 
 class CalendarEventsJsonView(LoginRequiredMixin, View):
     def get(self, request):
-        return JsonResponse(calendar_events(request.user, "tasks:task_update"), safe=False)
+        try:
+            period = calendar_range(request.GET)
+        except ValidationError as error:
+            return JsonResponse(error.message_dict, status=400)
+        return JsonResponse(calendar_events(request.user, "tasks:task_update", **period), safe=False)

@@ -1,6 +1,29 @@
 from django import forms
+from django.core.exceptions import ValidationError
 
 from tasks.models import Task
+
+
+class CalendarRangeForm(forms.Form):
+    start = forms.DateTimeField()
+    end = forms.DateTimeField()
+
+    def clean(self):
+        values = super().clean()
+        start = values.get("start")
+        end = values.get("end")
+        if start is not None and end is not None and end <= start:
+            self.add_error("end", "O fim deve ser posterior ao início.")
+        return values
+
+
+def calendar_range(params):
+    if "start" not in params and "end" not in params:
+        return {}
+    form = CalendarRangeForm(params)
+    if not form.is_valid():
+        raise ValidationError(dict(form.errors))
+    return form.cleaned_data
 
 
 class BootstrapFormMixin:

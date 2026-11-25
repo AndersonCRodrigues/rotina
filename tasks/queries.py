@@ -19,8 +19,10 @@ def task_counts(now):
     }
 
 
-def calendar_events(user, task_route):
+def calendar_events(user, task_route, *, start=None, end=None):
     tasks = Task.objects.filter(owner=user).values("id", "title", "scheduled_for", "status")
+    if start is not None:
+        tasks = tasks.filter(scheduled_for__gte=start, scheduled_for__lt=end)
     colors = {
         Task.Status.TODO: "#6c757d",
         Task.Status.IN_PROGRESS: "#0d6efd",

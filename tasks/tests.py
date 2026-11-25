@@ -66,6 +66,21 @@ class TaskModelTests(TestCase):
         self.assertEqual(task.status, Task.Status.DONE)
         self.assertIsNotNone(task.completed_at)
 
+    def test_mark_complete_preserves_timestamps_when_a_stale_instance_retries(self):
+        task = self._make_task()
+        stale = Task.objects.get(pk=task.pk)
+        task.mark_complete()
+        stale.mark_complete()
+        stale.refresh_from_db()
+        self.assertEqual(stale.completed_at, task.completed_at)
+        self.assertEqual(stale.updated_at, task.updated_at)
+
+    def test_mark_complete_repairs_completed_task_without_timestamp(self):
+        task = self._make_task(status=Task.Status.DONE)
+        task.mark_complete()
+        task.refresh_from_db()
+        self.assertIsNotNone(task.completed_at)
+
     def test_mark_reminder_sent_sets_timestamp(self):
         task = self._make_task(remind_enabled=True, remind_minutes_before=10)
         self.assertIsNone(task.reminder_sent_at)

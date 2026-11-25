@@ -100,6 +100,10 @@ revogado. Use **HTTPS em produção**.
 O resumo retorna `total`, `done`, `overdue` e `upcoming`. O calendário
 retorna uma lista de eventos com `id`, `title`, `start`, `color` e `url`.
 O campo `start` segue ISO 8601, e `url` aponta para o detalhe da tarefa na API.
+O feed web e o da API aceitam `start` e `end` em ISO 8601. O início é
+inclusivo e o fim é exclusivo. Envie os dois parâmetros juntos. O
+calendário web usa o período visível e chamadas sem os parâmetros
+retornam todos os eventos da conta.
 Os endpoints de métricas aceitam o filtro `?inicio=2026-11-01&fim=2026-11-30`.
 Um período inválido retorna `400 Bad Request`. O JSON de métricas inclui
 `inicio`, `fim`, `labels`, `totals` e `daily`.
@@ -243,6 +247,8 @@ Ao desativar um lembrete, a antecedência é apagada. Ao reagendar ou modificar 
 #### 7. Concluir e excluir
 
 Para concluir: **POST** `{{base_url}}/api/tarefas/1/concluir/`, com token e sem body. Sucesso: `200 OK`, tarefa com `status: "done"` e `completed_at` preenchido.
+Repetir a conclusão de uma tarefa já concluída preserva `completed_at` e
+`updated_at`.
 
 Para excluir: **DELETE** `{{base_url}}/api/tarefas/1/`, com token e sem body. Sucesso: `204 No Content`.
 
@@ -405,7 +411,7 @@ python manage.py send_reminders --loop
 O primeiro comando executa a verificação do Django e gera os relatórios de
 cobertura. Com `--no-cov`, o script executa a verificação e os testes.
 
-A suíte possui **125 testes**, incluindo autenticação, criação inicial do
+A suíte possui **129 testes**, incluindo autenticação, criação inicial do
 superadmin, API, métricas, isolamento de tarefas por usuário e worker de lembretes.
 
 **Cobertura verificada: 100% das linhas** de todo o código de aplicação
