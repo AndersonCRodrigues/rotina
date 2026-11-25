@@ -8,7 +8,6 @@ from core.fields import EncryptedTextField
 
 class CryptoUtilTests(TestCase):
     def tearDown(self):
-        # evita que o cache de _fernet vaze configuração entre testes
         crypto._fernet.cache_clear()
 
     def test_encrypt_and_decrypt_roundtrip(self):

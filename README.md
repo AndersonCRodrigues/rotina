@@ -295,11 +295,15 @@ consulta as tarefas com lembrete pendente (`Task.objects.pending_reminders()`)
 e as marca como notificadas (`Task.reminder_sent_at`).
 
 ```bash
-python manage.py send_reminders                          # uma passada e sai
-python manage.py send_reminders --loop                   # roda continuamente
-python manage.py send_reminders --loop --interval 15      # a cada 15s
-python manage.py send_reminders --loop --max-iterations 3 # limita passadas (uso em testes)
+python manage.py send_reminders
+python manage.py send_reminders --loop
+python manage.py send_reminders --loop --interval 15
+python manage.py send_reminders --loop --max-iterations 3
 ```
+
+O comando padrão faz uma verificação. Com `--loop`, ele roda continuamente.
+Use `--interval` para ajustar o intervalo em segundos e
+`--max-iterations` para limitar o número de verificações em testes.
 
 No Docker Compose ele roda como o serviço `worker`, contínuo, ao lado do
 `web` — mesmo banco, sem infraestrutura extra.
@@ -317,12 +321,13 @@ No Docker Compose ele roda como o serviço `worker`, contínuo, ao lado do
 
 ```bash
 cp .env.example .env
-# edite o .env: gere SECRET_KEY e FIELD_ENCRYPTION_KEY (comandos abaixo) e
-# defina uma senha de banco forte
-
 python3 -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
 
+Defina no `.env` as duas chaves geradas e uma senha para o banco. Depois inicie o Compose.
+
+```bash
 docker compose up --build
 ```
 
@@ -351,22 +356,25 @@ Para acompanhar os lembretes disparados pelo worker:
 docker compose logs -f worker
 ```
 
-Para parar:
+Para parar e manter os dados do PostgreSQL:
 
 ```bash
-docker compose down          # mantém os dados (volume postgres_data)
-docker compose down -v       # remove também os dados do banco
+docker compose down
 ```
+
+Use `docker compose down -v` quando também quiser remover o volume do banco.
 
 ## Rodando localmente sem Docker (desenvolvimento)
 
 ```bash
 python3 -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
-pip install -r requirements-dev.txt   # inclui requirements.txt + coverage
+source venv/bin/activate
+pip install -r requirements-dev.txt
 
 cp .env.example .env
 ```
+
+No Windows, ative o ambiente virtual com `venv\Scripts\activate`.
 
 Configure um PostgreSQL acessível no `.env` e preencha as chaves e credenciais
 descritas acima. Reserve `USE_SQLITE_FOR_TESTS=True` para testes, pois cada
@@ -387,9 +395,12 @@ python manage.py send_reminders --loop
 ## Rotina de testes
 
 ```bash
-./run_tests.sh              # django check + testes + relatório de cobertura + HTML
-./run_tests.sh --no-cov     # só check + testes, sem medir cobertura (mais rápido)
+./run_tests.sh
+./run_tests.sh --no-cov
 ```
+
+O primeiro comando executa a verificação do Django e gera os relatórios de
+cobertura. Com `--no-cov`, o script executa a verificação e os testes.
 
 A suíte possui **124 testes**, incluindo autenticação, criação inicial do
 superadmin, API, métricas, isolamento de tarefas por usuário e worker de lembretes.
@@ -402,8 +413,10 @@ as migrações, os pontos de entrada e as configurações do Django.
 Para ver o relatório detalhado por arquivo depois de rodar:
 
 ```bash
-open htmlcov/index.html    # macOS; no Linux: xdg-open htmlcov/index.html
+open htmlcov/index.html
 ```
+
+No Linux, use `xdg-open htmlcov/index.html`.
 
 Há também um workflow de CI (`.github/workflows/tests.yml`) que roda a
 mesma rotina a cada push/PR e falha se a cobertura cair de 100%.
@@ -426,18 +439,18 @@ mesma rotina a cada push/PR e falha se a cobertura cair de 100%.
 
 ```
 rotina/
-├── accounts/                    # usuário customizado, cadastro, login/logout
-├── core/                         # landing page, criptografia (crypto.py, fields.py)
-├── tasks/                         # model Task (com lembrete), painel, CRUD, calendário
-│   └── management/commands/send_reminders.py   # worker de lembretes
+├── accounts/
+├── core/
+├── tasks/
+│   └── management/commands/send_reminders.py
 ├── templates/base.html
 ├── static/css/custom.css
-├── Dockerfile.web                 # imagem do Django (Gunicorn)
-├── Dockerfile.worker               # imagem do worker de lembretes
+├── Dockerfile.web
+├── Dockerfile.worker
 ├── entrypoint.web.sh / entrypoint.worker.sh
-├── docker-compose.yml              # db + web + worker
-├── run_tests.sh                     # rotina de testes (check + testes + cobertura)
-├── .github/workflows/tests.yml       # CI
+├── docker-compose.yml
+├── run_tests.sh
+├── .github/workflows/tests.yml
 ├── requirements.txt / requirements-dev.txt
 └── .env.example
 ```

@@ -4,12 +4,6 @@ from tasks.models import Task
 
 
 class BootstrapFormMixin:
-    """Aplica classes do Bootstrap aos widgets: `form-check-input` para
-    checkboxes, `form-control` para os demais (inclusive selects, que o
-    Bootstrap 5 também estiliza com `form-select`, tratado à parte quando
-    necessário).
-    """
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():

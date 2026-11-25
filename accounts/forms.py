@@ -5,11 +5,6 @@ from accounts.models import User
 
 
 class RegisterForm(UserCreationForm):
-    """Formulário de cadastro. Reaproveita UserCreationForm do Django, que já
-    aplica AUTH_PASSWORD_VALIDATORS e faz o hashing da senha via
-    `set_password()` — a senha em texto plano nunca é persistida.
-    """
-
     email = forms.EmailField(required=True, label="E-mail")
 
     class Meta:

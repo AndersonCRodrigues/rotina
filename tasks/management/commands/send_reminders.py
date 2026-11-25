@@ -1,26 +1,3 @@
-"""Worker de lembretes.
-
-Um processo simples de *polling* que consulta periodicamente o banco
-(via Django ORM — sem fila externa, sem Redis/Celery: só Postgres) por
-tarefas cujo lembrete já deveria ter disparado, e as marca como
-notificadas.
-
-IMPORTANTE — o que este worker faz e o que ele NÃO faz:
-- Ele identifica corretamente quais tarefas têm lembrete pendente e
-  registra que o aviso foi disparado (`Task.reminder_sent_at`).
-- Ele NÃO envia e-mail, push ou SMS de fato — o "disparo" aqui é uma
-  linha de log (stdout). Ligar isso a um canal real de notificação é
-  uma troca de uma função (`_notify`), mas exigiria credenciais de
-  e-mail/push configuradas, o que ficou fora do escopo pedido (rodar
-  só com Postgres, sem outra infraestrutura).
-
-Uso:
-    python manage.py send_reminders                  # uma passada e sai
-    python manage.py send_reminders --loop            # roda continuamente
-    python manage.py send_reminders --loop --interval 15
-    python manage.py send_reminders --loop --max-iterations 3   # uso em testes
-"""
-
 import time
 
 from django.core.management.base import BaseCommand
@@ -82,9 +59,6 @@ class Command(BaseCommand):
         return len(due_tasks)
 
     def _notify(self, task: Task, now) -> None:
-        """Ponto único de disparo do aviso. Hoje só loga; troque aqui para
-        integrar e-mail/push/SMS real no futuro.
-        """
         self.stdout.write(
             f'🔔 Lembrete: "{task.title}" (usuário {task.owner.username}) '
             f"agendada para {timezone.localtime(task.scheduled_for)} "

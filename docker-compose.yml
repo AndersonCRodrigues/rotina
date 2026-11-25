@@ -29,9 +29,6 @@ services:
     ports:
       - "8000:8000"
 
-  # Worker de lembretes: processo separado, sem fila externa — consulta o
-  # Postgres periodicamente (polling) por lembretes pendentes. Não expõe
-  # porta nenhuma; roda em segundo plano ao lado do `web`.
   worker:
     build:
       context: .

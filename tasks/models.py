@@ -7,15 +7,6 @@ from core.fields import EncryptedTextField
 
 class TaskQuerySet(models.QuerySet):
     def pending_reminders(self, as_of=None):
-        """Tarefas com lembrete pendente de disparo em `as_of` (agora, por
-        padrão): lembrete habilitado, ainda não enviado, tarefa não
-        concluída e horário de lembrete já alcançado.
-
-        Restringe a busca no banco a uma janela ampla (`scheduled_for` até
-        `as_of`, já que a maior antecedência configurável é de 2 dias) e
-        filtra o cálculo exato de `remind_at` em Python — evita depender de
-        aritmética de datas específica de cada banco (Postgres/SQLite).
-        """
         as_of = as_of or timezone.now()
         candidates = self.filter(
             remind_enabled=True,
@@ -28,10 +19,6 @@ class TaskQuerySet(models.QuerySet):
 
 
 class Task(models.Model):
-    """Uma tarefa agendável do usuário, exibida no painel e no calendário,
-    com lembrete opcional configurável (quanto tempo antes avisar).
-    """
-
     class Status(models.TextChoices):
         TODO = "todo", "A fazer"
         IN_PROGRESS = "in_progress", "Em andamento"
@@ -88,9 +75,6 @@ class Task(models.Model):
 
     @property
     def remind_at(self):
-        """Horário em que o lembrete deveria disparar, ou None se a tarefa
-        não tem lembrete configurado.
-        """
         if not self.remind_enabled or not self.remind_minutes_before:
             return None
         return self.scheduled_for - timezone.timedelta(minutes=self.remind_minutes_before)

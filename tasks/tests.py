@@ -87,8 +87,6 @@ class TaskModelTests(TestCase):
 
 
 class TaskQuerySetPendingRemindersTests(TestCase):
-    """Cobre o método usado pelo worker isoladamente do management command."""
-
     def setUp(self):
         self.user = make_user()
         self.now = timezone.now()
@@ -174,13 +172,11 @@ class SendRemindersCommandTests(TestCase):
         self.assertEqual(out.getvalue().count("Nenhum lembrete pendente"), 3)
 
     def test_loop_keyboard_interrupt_is_handled_gracefully(self):
-        """Simula Ctrl+C durante o sleep entre passadas do --loop."""
         out = io.StringIO()
         from unittest.mock import patch
 
         with patch("tasks.management.commands.send_reminders.time.sleep", side_effect=KeyboardInterrupt):
             call_command("send_reminders", "--loop", "--max-iterations", "5", stdout=out)
-        # rodou a primeira passada antes de ser interrompido no sleep
         self.assertIn("Nenhum lembrete pendente", out.getvalue())
         self.assertIn("interrompido", out.getvalue().lower())
 

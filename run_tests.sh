@@ -1,13 +1,4 @@
 #!/bin/sh
-# Rotina de testes do projeto Rotina.
-#
-# Uso:
-#   ./run_tests.sh            # roda tudo (check + testes + cobertura)
-#   ./run_tests.sh --no-cov   # roda check + testes, sem medir cobertura
-#
-# Pressupõe um ambiente com as dependências de requirements.txt instaladas
-# (veja o README) e USE_SQLITE_FOR_TESTS=True no .env, para não depender de
-# um Postgres real só para rodar a suíte.
 
 set -e
 

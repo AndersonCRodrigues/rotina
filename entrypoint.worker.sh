@@ -9,8 +9,6 @@ if [ "$USE_SQLITE_FOR_TESTS" != "True" ]; then
     echo "[worker] Postgres disponível."
 fi
 
-# Migração é idempotente e barata — roda aqui também para o caso do worker
-# subir antes do serviço web (ex: reinício isolado do worker).
 echo "[worker] Aplicando migrações..."
 python manage.py migrate --noinput
 
