@@ -349,6 +349,9 @@ Isso sobe três serviços:
 `web` e `worker` são **imagens separadas** (Dockerfiles distintos), mesmo
 compartilhando o código e as dependências — `worker` não carrega
 Gunicorn/WhiteNoise nem roda `collectstatic`, já que não serve HTTP.
+O serviço `web` aplica as migrações antes de iniciar o Gunicorn. O Compose
+inicia o `worker` depois que a porta interna do `web` estiver disponível
+e encaminha os sinais de encerramento ao processo do worker.
 
 Para acompanhar os lembretes disparados pelo worker:
 
@@ -402,7 +405,7 @@ python manage.py send_reminders --loop
 O primeiro comando executa a verificação do Django e gera os relatórios de
 cobertura. Com `--no-cov`, o script executa a verificação e os testes.
 
-A suíte possui **124 testes**, incluindo autenticação, criação inicial do
+A suíte possui **125 testes**, incluindo autenticação, criação inicial do
 superadmin, API, métricas, isolamento de tarefas por usuário e worker de lembretes.
 
 **Cobertura verificada: 100% das linhas** de todo o código de aplicação
@@ -472,10 +475,7 @@ rotina/
 
 ## Validação realizada
 
-Fluxo completo validado manualmente ponta a ponta: landing → cadastro
-(hash Argon2) → login → criação de tarefa com lembrete → nota criptografada
-em repouso confirmada via leitura direta da coluna no banco → painel →
-calendário (página e JSON) → conclusão → edição → bloqueio de acesso de
-outro usuário à mesma tarefa (404) → exclusão → worker de
-lembretes disparando, não duplicando disparo e ignorando tarefas concluídas/
-sem lembrete/no futuro.
+Validação ponta a ponta com Docker Compose, PostgreSQL 16 e `DEBUG=False`.
+Foram verificados os fluxos web e API, a criação inicial do superadmin,
+os dashboards por perfil, o CSV filtrado, as notas criptografadas no
+banco e o registro do lembrete pelo worker.

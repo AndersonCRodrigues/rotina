@@ -43,7 +43,7 @@ class Command(BaseCommand):
 
     def _run_once(self) -> int:
         now = timezone.now()
-        due_tasks = Task.objects.pending_reminders(as_of=now)
+        due_tasks = Task.objects.select_related("owner").defer("notes").pending_reminders(as_of=now)
 
         for task in due_tasks:
             self._notify(task, now)

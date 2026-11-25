@@ -164,6 +164,18 @@ class SendRemindersCommandTests(TestCase):
         call_command("send_reminders", stdout=out2)
         self.assertIn("Nenhum lembrete pendente", out2.getvalue())
 
+    def test_run_once_loads_reminder_owners_in_one_query(self):
+        for index in range(3):
+            Task.objects.create(
+                owner=make_user(f"owner-{index}"), title=f"Tarefa {index}",
+                scheduled_for=self.now + timezone.timedelta(minutes=5),
+                remind_enabled=True, remind_minutes_before=10,
+            )
+        out = io.StringIO()
+        with self.assertNumQueries(4):
+            call_command("send_reminders", stdout=out)
+        self.assertIn("3 lembrete(s) disparado(s)", out.getvalue())
+
     def test_loop_runs_max_iterations_then_stops(self):
         out = io.StringIO()
         call_command(

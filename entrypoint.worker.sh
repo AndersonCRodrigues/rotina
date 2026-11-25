@@ -9,7 +9,4 @@ if [ "$USE_SQLITE_FOR_TESTS" != "True" ]; then
     echo "[worker] Postgres disponível."
 fi
 
-echo "[worker] Aplicando migrações..."
-python manage.py migrate --noinput
-
 exec "$@"

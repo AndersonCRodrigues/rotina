@@ -1,1 +1,13 @@
 .env
+.env.*
+.git
+.agents
+.aws
+.codex
+.venv
+venv
+env
+**/__pycache__
+staticfiles
+.coverage
+htmlcov
