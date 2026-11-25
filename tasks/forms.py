@@ -60,6 +60,14 @@ class TaskForm(BootstrapFormMixin, forms.ModelForm):
         self.fields["scheduled_for"].input_formats = ["%Y-%m-%dT%H:%M"]
         self.fields["remind_minutes_before"].required = False
 
+    def clean_scheduled_for(self):
+        scheduled_for = self.cleaned_data["scheduled_for"]
+        if self.instance.pk:
+            original = self.instance.scheduled_for
+            if scheduled_for == original.replace(second=0, microsecond=0):
+                return original
+        return scheduled_for
+
     def clean(self):
         cleaned = super().clean()
         if cleaned.get("remind_enabled") and not cleaned.get("remind_minutes_before"):

@@ -425,6 +425,8 @@ class CalendarViewTests(TestCase):
     def test_calendar_page_loads(self):
         response = self.client.get(reverse("tasks:calendar"))
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Horários em America/Sao_Paulo")
+        self.assertContains(response, "timeZone: 'America/Sao_Paulo'")
 
     def test_calendar_requires_login(self):
         self.client.logout()

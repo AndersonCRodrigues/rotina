@@ -38,6 +38,11 @@ e dispara esses lembretes. Postgres, Docker Compose e Bootstrap 5.
 - Página de métricas com quatro indicadores por perfil, filtro de período,
   gráfico diário e exportação CSV
 
+O calendário, o painel e os formulários web exibem os horários de
+`America/Sao_Paulo` mesmo em navegadores configurados para outro fuso.
+Ao editar outros campos de uma tarefa, o formulário preserva os segundos
+e microssegundos já gravados se o horário exibido continuar igual.
+
 ## Dashboards de métricas
 
 Usuários comuns acessam **Métricas** em `/tarefas/metricas/` e mantêm o
@@ -418,7 +423,7 @@ python manage.py send_reminders --loop
 O primeiro comando executa a verificação do Django e gera os relatórios de
 cobertura. Com `--no-cov`, o script executa a verificação e os testes.
 
-A suíte possui **132 testes**, incluindo autenticação, criação inicial do
+A suíte possui **133 testes**, incluindo autenticação, criação inicial do
 superadmin, API, métricas, isolamento de tarefas por usuário e worker de lembretes.
 
 **Cobertura verificada: 100% das linhas** de todo o código de aplicação

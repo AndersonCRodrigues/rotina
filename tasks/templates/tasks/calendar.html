@@ -1,20 +1,29 @@
 {% extends "base.html" %}
+{% load tz %}
 {% block title %}Calendário — Rotina{% endblock %}
 
 {% block content %}
-<h2 class="mb-4">Calendário de tarefas</h2>
+{% get_current_timezone as calendar_timezone %}
+<div class="mb-4">
+    <h2 class="mb-1">Calendário de tarefas</h2>
+    <p class="small text-muted mb-0">Horários em {{ calendar_timezone }}</p>
+</div>
 <div id="calendar"></div>
 {% endblock %}
 
 {% block extra_scripts %}
+{% get_current_timezone as calendar_timezone %}
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/locales/pt-br.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/luxon@3.7.2/build/global/luxon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/luxon3@6.1.15/index.global.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         var calendarEl = document.getElementById('calendar');
         var calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth',
             locale: 'pt-br',
+            timeZone: '{{ calendar_timezone|escapejs }}',
             height: 'auto',
             headerToolbar: {
                 left: 'prev,next today',

@@ -252,6 +252,24 @@ class TaskHTMLReminderRegressionTests(TestCase):
         self.task.refresh_from_db()
         self.assertIsNone(self.task.reminder_sent_at)
 
+    def test_title_edit_preserves_precise_api_schedule_and_sent_reminder(self):
+        scheduled = self.task.scheduled_for.replace(second=42, microsecond=123456)
+        self.task.scheduled_for = scheduled
+        self.task.save(update_fields=["scheduled_for"])
+        sent_at = self.task.reminder_sent_at
+
+        response = self.client.post(self.url, {
+            "title": "Agenda revisada", "notes": "", "status": "todo",
+            "scheduled_for": timezone.localtime(scheduled).strftime("%Y-%m-%dT%H:%M"),
+            "remind_enabled": "on", "remind_minutes_before": "30",
+        })
+
+        self.assertEqual(response.status_code, 302)
+        self.task.refresh_from_db()
+        self.assertEqual(self.task.title, "Agenda revisada")
+        self.assertEqual(self.task.scheduled_for, scheduled)
+        self.assertEqual(self.task.reminder_sent_at, sent_at)
+
     def test_disabling_html_reminder_clears_offset(self):
         response = self.client.post(self.url, {
             "title": "Agenda", "notes": "", "status": "todo",
