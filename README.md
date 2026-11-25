@@ -35,7 +35,33 @@ e dispara esses lembretes. Postgres, Docker Compose e Bootstrap 5.
   escolha a antecedência (10 min, 30 min, 1h, 3h, 1 dia ou 2 dias antes). O
   horário calculado (`Task.remind_at`) aparece no painel.
 - Calendário mensal interativo (FullCalendar), alimentado por endpoint JSON
-- Painel administrativo do Django (`/admin/`)
+- Página de métricas com quatro indicadores por perfil, filtro de período,
+  gráfico diário e exportação CSV
+
+## Dashboards de métricas
+
+Usuários comuns acessam **Métricas** em `/tarefas/metricas/` e mantêm o
+acesso ao painel de tarefas e ao calendário. A página mostra total de
+tarefas próprias, concluídas, atrasadas e próximas, com base na data
+agendada. O gráfico mostra as tarefas agendadas por dia.
+
+O superadmin abre diretamente as métricas do sistema ao entrar. Na
+interface autenticada, o perfil tem acesso ao dashboard, ao CSV e à saída.
+Os indicadores globais são contas cadastradas, contas distintas que
+criaram tarefas, tarefas criadas e tarefas concluídas. Cada indicador usa
+a data do respectivo evento. O gráfico mostra as tarefas criadas por dia.
+
+O filtro usa `inicio` e `fim` no formato `AAAA-MM-DD`. As duas datas são
+inclusivas, no fuso `America/Sao_Paulo`. O período inicial contém os
+últimos 30 dias, incluindo hoje. Um período explícito exige as duas datas
+em ordem e pode conter até 366 dias. Acima de 31 dias, o gráfico agrupa
+dias consecutivos para manter a leitura. O CSV inclui cada dia do período e
+uma linha de totais. No relatório global, a contagem de contas que
+criaram tarefas no período elimina repetições entre dias.
+
+Web, API e CSV usam as mesmas agregações. São feitas uma consulta para
+os dados do usuário comum e quatro para os dados globais, além da
+autenticação. A quantidade de consultas independe do número de registros.
 
 ## API REST — Django REST Framework
 
@@ -53,6 +79,8 @@ Cada token identifica um `accounts.User`. Em todas as rotas de tarefas, o servid
 | POST | `/api/login/` | Validar `username` e `password` e obter token DRF | 200 |
 | POST | `/api/logout/` | Revogar o token enviado no header | 204 |
 | GET | `/api/me/` | Dados da conta autenticada | 200 |
+| GET | `/api/metricas/` | Retornar indicadores e série diária conforme o perfil | 200 |
+| GET | `/api/metricas/csv/` | Baixar os indicadores e a série diária em CSV | 200 |
 | GET | `/api/tarefas/` | Listar apenas as próprias tarefas | 200 |
 | POST | `/api/tarefas/` | Criar tarefa para a conta autenticada | 201 |
 | GET | `/api/tarefas/resumo/` | Contar tarefas próprias por situação | 200 |
@@ -72,6 +100,9 @@ revogado. Use **HTTPS em produção**.
 O resumo retorna `total`, `done`, `overdue` e `upcoming`. O calendário
 retorna uma lista de eventos com `id`, `title`, `start`, `color` e `url`.
 O campo `start` segue ISO 8601, e `url` aponta para o detalhe da tarefa na API.
+Os endpoints de métricas aceitam o filtro `?inicio=2026-11-01&fim=2026-11-30`.
+Um período inválido retorna `400 Bad Request`. O JSON de métricas inclui
+`inicio`, `fim`, `labels`, `totals` e `daily`.
 
 ### Testar com Insomnia, Thunder Client ou cliente REST
 
@@ -360,24 +391,13 @@ python manage.py send_reminders --loop
 ./run_tests.sh --no-cov     # só check + testes, sem medir cobertura (mais rápido)
 ```
 
-A suíte possui **118 testes**, incluindo autenticação, criação inicial do
-superadmin, API, isolamento de tarefas por usuário e worker de lembretes.
+A suíte possui **124 testes**, incluindo autenticação, criação inicial do
+superadmin, API, métricas, isolamento de tarefas por usuário e worker de lembretes.
 
 **Cobertura verificada: 100% das linhas** de todo o código de aplicação
 (`accounts`, `core`, `tasks`, `rotina/urls.py`), medida com `coverage.py`
-(config em `.coveragerc`). Ficam de fora, com justificativa documentada no
-próprio `.coveragerc`:
-
-- `*/migrations/*`, `manage.py`, `rotina/wsgi.py`, `rotina/asgi.py` —
-  boilerplate gerado pelo Django, sem lógica de aplicação.
-- `rotina/settings.py` — configuração declarativa por variável de
-  ambiente; cobrir de forma significativa exigiria rodar a suíte inteira
-  uma vez por combinação de env vars, o que não agrega confiança real.
-- as 3 linhas do bloco `if settings.DEBUG:` em `rotina/urls.py` (serving de
-  estáticos em dev sem proxy reverso) — o test runner do Django força
-  `DEBUG=False` durante os testes, então esse bloco nunca executa em
-  ambiente de teste; é o padrão recomendado pela própria documentação do
-  Django, não lógica desta aplicação.
+(configuração em `.coveragerc`). A medição exclui os arquivos de testes,
+as migrações, os pontos de entrada e as configurações do Django.
 
 Para ver o relatório detalhado por arquivo depois de rodar:
 
@@ -431,8 +451,8 @@ rotina/
   `SECURE_CONTENT_TYPE_NOSNIFF` habilitados por padrão; HSTS automático
   quando `DEBUG=False`.
 - Ambos os containers (`web` e `worker`) rodam como usuário não-root.
-- Toda query de `Task` é filtrada por `owner=request.user` nas views —
-  protege contra IDOR.
+- As consultas de tarefas individuais e métricas pessoais usam
+  `owner=request.user`. As métricas globais exigem uma conta superadmin.
 - **Antes de subir para produção:** troque `SECRET_KEY`,
   `FIELD_ENCRYPTION_KEY` e a senha do Postgres pelos valores gerados para o
   seu ambiente.
@@ -443,11 +463,6 @@ Fluxo completo validado manualmente ponta a ponta: landing → cadastro
 (hash Argon2) → login → criação de tarefa com lembrete → nota criptografada
 em repouso confirmada via leitura direta da coluna no banco → painel →
 calendário (página e JSON) → conclusão → edição → bloqueio de acesso de
-outro usuário à mesma tarefa (404) → exclusão → `/admin/` → worker de
+outro usuário à mesma tarefa (404) → exclusão → worker de
 lembretes disparando, não duplicando disparo e ignorando tarefas concluídas/
 sem lembrete/no futuro.
-
-Não foi possível executar `docker compose up` dentro deste sandbox (sem
-Docker disponível) — revise o build dos dois Dockerfiles ao subir no seu
-ambiente. O restante (Django/ORM/templates/views/worker) foi exercitado
-diretamente, sem Docker.

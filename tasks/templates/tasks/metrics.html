@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Métricas — Rotina{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <h2 class="mb-0">{% if user.is_superuser %}Métricas do sistema{% else %}Minhas métricas{% endif %}</h2>
+    {% if report %}
+        <a class="btn btn-outline-primary" href="{% url 'tasks:metrics_csv' %}?inicio={{ report.inicio|date:'Y-m-d' }}&amp;fim={{ report.fim|date:'Y-m-d' }}">
+            <i class="bi bi-download"></i> Exportar CSV
+        </a>
+    {% endif %}
+</div>
+
+<form method="get" action="{% url 'tasks:metrics' %}" class="card card-body mb-4">
+    <div class="row g-3">
+        {% for field in form %}
+            <div class="col-12 col-sm-5 col-lg-3">
+                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% for error in field.errors %}
+                    <div class="small text-danger mt-1">{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+        <div class="col-12 col-sm-auto align-self-end">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+        </div>
+    </div>
+</form>
+
+{% if report %}
+    <div class="row g-3 mb-4">
+        {% for label, value in cards %}
+            <div class="col-6 col-md-3">
+                <div class="card stat-card h-100"><div class="card-body">
+                    <div class="text-muted small">{{ label }}</div>
+                    <div class="fs-3 fw-bold stat-value">{{ value }}</div>
+                </div></div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <figure class="card">
+        <div class="card-body">
+            <figcaption class="h5 mb-3">{{ chart_label }}</figcaption>
+            <ul class="metrics-chart list-unstyled mb-0">
+                {% for start, end, value in chart_bars %}
+                    <li class="metrics-chart-column" title="{{ start|date:'d/m/Y' }}{% if start != end %} a {{ end|date:'d/m/Y' }}{% endif %} · {{ value }}">
+                        <span class="visually-hidden">
+                            {{ start|date:'d/m/Y' }}{% if start != end %} a {{ end|date:'d/m/Y' }}{% endif %} · {{ value }}
+                        </span>
+                        <span class="metrics-chart-track" aria-hidden="true">
+                            <span class="metrics-chart-bar" style="height: {% widthratio value chart_max 100 %}%"></span>
+                        </span>
+                        <time datetime="{{ start|date:'Y-m-d' }}" aria-hidden="true">{{ start|date:'d/m' }}</time>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </figure>
+{% endif %}
+{% endblock %}

@@ -1,11 +1,14 @@
 from django.urls import path
 
 from tasks import views
+from tasks.metrics_views import MetricsView
 
 app_name = "tasks"
 
 urlpatterns = [
     path("", views.DashboardView.as_view(), name="dashboard"),
+    path("metricas/", MetricsView.as_view(), name="metrics"),
+    path("metricas/csv/", MetricsView.as_view(export=True), name="metrics_csv"),
     path("nova/", views.TaskCreateView.as_view(), name="task_create"),
     path("<int:pk>/editar/", views.TaskUpdateView.as_view(), name="task_update"),
     path("<int:pk>/excluir/", views.TaskDeleteView.as_view(), name="task_delete"),

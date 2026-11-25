@@ -8,6 +8,7 @@ from accounts.api_views import (
     TokenLogoutView,
 )
 from tasks.api_views import CalendarEventsView, TaskSummaryView, TaskViewSet
+from tasks.metrics_views import MetricsAPIView, MetricsCSVAPIView
 
 app_name = "api"
 router = DefaultRouter()
@@ -18,6 +19,8 @@ urlpatterns = [
     path("login/", TokenLoginView.as_view(), name="login"),
     path("logout/", TokenLogoutView.as_view(), name="logout"),
     path("me/", CurrentUserView.as_view(), name="me"),
+    path("metricas/", MetricsAPIView.as_view(), name="metrics"),
+    path("metricas/csv/", MetricsCSVAPIView.as_view(), name="metrics_csv"),
     path("tarefas/resumo/", TaskSummaryView.as_view(), name="task_summary"),
     path("tarefas/calendario/eventos.json", CalendarEventsView.as_view(), name="calendar_events"),
     path("", include(router.urls)),

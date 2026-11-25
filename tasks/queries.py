@@ -6,14 +6,17 @@ from tasks.models import Task
 
 
 def task_summary(tasks):
-    now = timezone.now()
+    return tasks.aggregate(**task_counts(timezone.now()))
+
+
+def task_counts(now):
     pending = ~Q(status=Task.Status.DONE)
-    return tasks.aggregate(
-        total=Count("pk"),
-        done=Count("pk", filter=Q(status=Task.Status.DONE)),
-        overdue=Count("pk", filter=pending & Q(scheduled_for__lt=now)),
-        upcoming=Count("pk", filter=pending & Q(scheduled_for__gte=now)),
-    )
+    return {
+        "total": Count("pk"),
+        "done": Count("pk", filter=Q(status=Task.Status.DONE)),
+        "overdue": Count("pk", filter=pending & Q(scheduled_for__lt=now)),
+        "upcoming": Count("pk", filter=pending & Q(scheduled_for__gte=now)),
+    }
 
 
 def calendar_events(user, task_route):
